@@ -1,0 +1,12 @@
+[package]
+name = "livid"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+log = "0.4.14"
+nix = "0.23.0"
+bitflags = "1.2.1"
+
+[dev-dependencies]
+env_logger = { version = "0.9.0", default-features = false }

@@ -3,7 +3,7 @@
 
 use std::{
     env,
-    io::Write,
+    io::{Read, Write},
     path::Path,
     time::{Duration, Instant},
 };
@@ -21,28 +21,34 @@ fn main() -> livid::Result<()> {
 
     let device = Device::open(Path::new(&path))?;
 
-    let meta = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, Pixelformat::YUYV))?;
-    println!("negotiated format: {:?}", meta.format());
-    let mut stream = meta.into_stream(1)?;
-    stream.stream_on()?;
+    println!(
+        "capabilities: {:?}",
+        device.capabilities()?.device_capabilities()
+    );
+
+    let mut capture =
+        device.video_capture(PixFormat::new(u32::MAX, u32::MAX, Pixelformat::YUYV))?;
+    println!("negotiated format: {:?}", capture.format());
+    let size = capture.format().size_image() as usize;
+    let mut buf = vec![0; size];
+
+    // FIXME this used to use the streaming API, but that doesn't seem to work with my webcam
 
     println!("stream started, waiting for data");
     let mut frames = 0;
     let mut time = Instant::now();
     loop {
-        stream.dequeue(|_view| {
-            frames += 1;
-            print!(".");
-            std::io::stdout().flush().ok();
+        capture.read(&mut buf)?;
 
-            if time.elapsed() >= Duration::from_secs(1) {
-                println!(" {} FPS", frames);
+        frames += 1;
+        print!(".");
+        std::io::stdout().flush().ok();
 
-                time = Instant::now();
-                frames = 0;
-            }
+        if time.elapsed() >= Duration::from_secs(1) {
+            println!(" {} FPS", frames);
 
-            Ok(())
-        })?;
+            time = Instant::now();
+            frames = 0;
+        }
     }
 }

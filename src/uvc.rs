@@ -16,6 +16,7 @@ use self::raw::{XuControlQuery, XuQuery};
 /// `UVCH` meta capture format.
 #[derive(Clone, Copy, Debug)]
 pub struct UvcMetadata {
+    #[allow(dead_code)]
     raw: RawMetadata,
 }
 

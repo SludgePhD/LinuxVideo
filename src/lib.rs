@@ -28,7 +28,7 @@ pub use pixelformat::Pixelformat;
 pub use shared::*;
 use stream::ReadStream;
 
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 pub fn list() -> Result<impl Iterator<Item = Result<Device>>> {
     Ok(fs::read_dir("/dev")?.flat_map(|file| {

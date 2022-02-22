@@ -11,7 +11,15 @@ impl Pixelformat {
     /// `aaaaaaaa rrrrrrrr gggggggg bbbbbbbb`
     pub const RGB32: Self = fourcc(b"RGB4");
 
+    /// Motion JPEG, a sequence of JPEG images with omitted huffman tables.
+    ///
+    /// The transmitted JPEG images lack the "DHT" frame (Define Huffman Table), and instead use a
+    /// predefined one.
     pub const MJPG: Self = fourcc(b"MJPG");
+
+    /// Data is a sequence of regular JPEG still images.
+    ///
+    /// Images can be decoded with any off-the-shelf JPEG decoder, no preprocessing is needed.
     pub const JPEG: Self = fourcc(b"JPEG");
 
     /// UVC payload header metadata.

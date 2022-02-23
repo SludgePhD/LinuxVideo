@@ -223,11 +223,6 @@ impl Device {
         }
     }
 
-    pub fn write(&mut self, data: &[u8]) -> Result<()> {
-        // TODO remove
-        Ok(self.file.write_all(data)?)
-    }
-
     /// Puts the device into video capture mode and negotiates a pixel format.
     ///
     /// # Format Negotiation
@@ -243,6 +238,26 @@ impl Device {
         };
 
         Ok(VideoCaptureDevice {
+            file: self.file,
+            format,
+        })
+    }
+
+    /// Puts the device into video output mode and negotiates a pixel format.
+    ///
+    /// # Format Negotiation
+    ///
+    /// Generally, the driver is allowed to change most properties of the [`PixFormat`], including
+    /// the requested dimensions and the [`Pixelformat`], if the provided value is not supported.
+    /// However, it is not required to do so and may instead return `EINVAL` if the parameters are
+    /// not supported. One example where this happens is with `v4l2loopback`.
+    pub fn video_output(mut self, format: PixFormat) -> Result<VideoOutputDevice> {
+        let format = match self.set_format_raw(Format::VideoOutput(format))? {
+            Format::VideoOutput(fmt) => fmt,
+            _ => unreachable!(),
+        };
+
+        Ok(VideoOutputDevice {
             file: self.file,
             format,
         })
@@ -297,6 +312,34 @@ impl VideoCaptureDevice {
 impl Read for VideoCaptureDevice {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.file.read(buf)
+    }
+}
+
+pub struct VideoOutputDevice {
+    file: File,
+    format: PixFormat,
+}
+
+impl VideoOutputDevice {
+    pub fn format(&self) -> &PixFormat {
+        &self.format
+    }
+}
+
+/// Performs a direct `write()` on the video device file, writing a video frame to it.
+///
+/// This will only succeed if the device advertises the `READWRITE` capability, otherwise an
+/// error will be returned and you have to use the streaming API instead.
+///
+/// Note that some applications, like guvcview, do not support the read/write methods, so using this
+/// on a v4l2loopback device will not work with such applications.
+impl Write for VideoOutputDevice {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.file.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
     }
 }
 

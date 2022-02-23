@@ -3,12 +3,9 @@
 //! TODO: this is very rough and doesn't do much
 
 use core::slice;
-use std::{env, mem, path::Path, thread, time::Duration};
+use std::{env, io::Write, mem, path::Path, thread, time::Duration};
 
-use livid::{
-    format::{Format, PixFormat},
-    CapabilityFlags, Device, Pixelformat,
-};
+use livid::{format::PixFormat, CapabilityFlags, Device, Pixelformat};
 
 const WIDTH: u32 = 120;
 const HEIGHT: u32 = 60;
@@ -31,7 +28,7 @@ fn main() -> livid::Result<()> {
         .next()
         .ok_or_else(|| format!("usage: write <device>"))?;
 
-    let mut device = Device::open(Path::new(&path))?;
+    let device = Device::open(Path::new(&path))?;
     if !device
         .capabilities()?
         .device_capabilities()
@@ -43,14 +40,10 @@ fn main() -> livid::Result<()> {
         .into());
     }
 
-    let format = Format::VideoOutput(PixFormat::new(WIDTH, HEIGHT, PIXFMT));
-    let format = device.set_format_raw(format)?;
-    println!("set format: {:?}", format);
+    let mut output = device.video_output(PixFormat::new(WIDTH, HEIGHT, PIXFMT))?;
+    let fmt = output.format();
+    println!("set format: {:?}", fmt);
 
-    let fmt = match format {
-        Format::VideoOutput(fmt) => fmt,
-        _ => unreachable!(),
-    };
     if fmt.width() != WIDTH || fmt.height() != HEIGHT || fmt.pixelformat() != PIXFMT {
         return Err(format!("driver does not support the requested parameters").into());
     }
@@ -62,8 +55,9 @@ fn main() -> livid::Result<()> {
 
     assert_eq!(data.len(), fmt.size_image() as usize);
 
+    println!("output started");
     loop {
-        device.write(image_bytes)?;
+        output.write(image_bytes)?;
         thread::sleep(Duration::from_millis(16));
     }
 }

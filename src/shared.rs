@@ -1,6 +1,15 @@
 //! FFI-compatible types that may also be exposed to Rust code.
 
-use bitflags::bitflags;
+// This macro enforces that all `bitflags!` types in here are marked
+// `#[repr(transparent)]` and thus FFI-safe.
+macro_rules! bitflags {
+    ($($t:tt)*) => {
+        bitflags::bitflags! {
+            #[repr(transparent)]
+            $($t)*
+        }
+    };
+}
 
 ffi_enum! {
     pub enum TunerType: u32 {
@@ -154,7 +163,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct FmtFlags: u32 {
         /// This is a compressed format.
         const COMPRESSED             = 0x0001;
@@ -213,7 +221,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct AnalogStd: u64 { // NB: this is v4l2_std_id
         const PAL_B       = 0x0000001;
         const PAL_B1      = 0x0000002;
@@ -249,7 +256,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct OutputCapabilities: u32 {
         /// This output supports setting video timings by using VIDIOC_S_DV_TIMINGS.
         const DV_TIMINGS     = 0x00000002;
@@ -263,7 +269,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct InputCapabilities: u32 {
         /// This input supports setting video timings by using VIDIOC_S_DV_TIMINGS.
         const DV_TIMINGS     = 0x00000002;
@@ -278,7 +283,6 @@ bitflags! {
 
 bitflags! {
     /// Device capabilities.
-    #[repr(transparent)]
     pub struct CapabilityFlags: u32 {
         /// The device supports the single-planar API through the Video Capture interface.
         const VIDEO_CAPTURE        = 0x00000001;
@@ -367,7 +371,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct InputStatus: u32 {
         const NO_POWER   = 0x00000001;
         const NO_SIGNAL  = 0x00000002;
@@ -392,7 +395,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct VbiFlags: u32 {
         const UNSYNC     = 1 << 0;
         const INTERLACED = 1 << 1;
@@ -400,7 +402,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct ServiceSet: u32 {
         const TELETEXT_B  = 0x0001;
         const VPS         = 0x0400;
@@ -410,7 +411,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct PixFmtFlag: u32 {
         const PREMUL_ALPHA = 0x00000001;
         const SET_CSC      = 0x00000002;
@@ -418,7 +418,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct BufCap: u32 {
         const SUPPORTS_MMAP                 = 1 << 0;
         const SUPPORTS_USERPTR              = 1 << 1;
@@ -431,7 +430,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct BufFlag: u32 {
         const MAPPED               = 0x00000001;
         const QUEUED               = 0x00000002;
@@ -459,7 +457,6 @@ bitflags! {
 }
 
 bitflags! {
-    #[repr(transparent)]
     pub struct TimecodeFlags: u32 {
         const DROPFRAME            = 0x0001;
         const COLORFRAME           = 0x0002;

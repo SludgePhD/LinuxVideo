@@ -1,39 +1,50 @@
 use std::fmt;
 
-/// Little-endian four character code (fourcc) identifying a pixel format.
+/// Four character code (fourcc) identifying a pixel format.
+///
+/// fourcc codes are documented on <https://www.fourcc.org/>.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Pixelformat(u32);
 
 impl Pixelformat {
     /// `rrrrrrrr gggggggg bbbbbbbb aaaaaaaa`
-    pub const RGBA32: Self = fourcc(b"AB24");
+    pub const RGBA32: Self = fmt(b"AB24");
     /// `aaaaaaaa rrrrrrrr gggggggg bbbbbbbb`
-    pub const RGB32: Self = fourcc(b"RGB4");
+    pub const RGB32: Self = fmt(b"RGB4");
 
     /// Motion JPEG, a sequence of JPEG images with omitted huffman tables.
     ///
     /// The transmitted JPEG images lack the "DHT" frame (Define Huffman Table), and instead use a
     /// predefined one.
-    pub const MJPG: Self = fourcc(b"MJPG");
+    pub const MJPG: Self = fmt(b"MJPG");
 
     /// Data is a sequence of regular JPEG still images.
     ///
     /// Images can be decoded with any off-the-shelf JPEG decoder, no preprocessing is needed.
-    pub const JPEG: Self = fourcc(b"JPEG");
+    pub const JPEG: Self = fmt(b"JPEG");
 
     /// UVC payload header metadata.
-    pub const UVC: Self = fourcc(b"UVCH");
+    ///
+    /// Data is a stream of [`UvcMetadata`][crate::uvc::UvcMetadata] structures.
+    pub const UVC: Self = fmt(b"UVCH");
 
-    pub const YUYV: Self = fourcc(b"YUYV");
+    /// `yyyyyyyy uuuuuuuu YYYYYYYY vvvvvvvv`
+    ///
+    /// Packed YUV/YCbCr data with 4:2:2 chroma subsampling in the horizontal direction.
+    ///
+    /// `uuuuuuuu` and `vvvvvvvv` are shared by 2 neighboring pixels, while `yyyyyyyy` is the left
+    /// pixel's Y value, and `YYYYYYYY` is the right pixel's Y value.
+    pub const YUYV: Self = fmt(b"YUYV");
 
-    pub fn from_fourcc(fourcc: [u8; 4]) -> Self {
-        Self(u32::from_le_bytes(fourcc))
+    pub const fn from_fourcc(fourcc: &[u8; 4]) -> Self {
+        Self(u32::from_le_bytes(*fourcc))
     }
 }
 
-const fn fourcc(fourcc: &[u8; 4]) -> Pixelformat {
-    Pixelformat(u32::from_le_bytes(*fourcc))
+// Just a shorthand for `Pixelformat::from_fourcc`.
+const fn fmt(fourcc: &[u8; 4]) -> Pixelformat {
+    Pixelformat::from_fourcc(fourcc)
 }
 
 impl fmt::Display for Pixelformat {

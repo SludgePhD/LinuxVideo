@@ -1,3 +1,5 @@
+//! **Li**nux **Vid**eo device library.
+
 #![forbid(unaligned_references)] // can't believe this isn't default
 
 #[macro_use]
@@ -7,7 +9,7 @@ pub mod format;
 mod pixelformat;
 mod raw;
 mod shared;
-mod stream;
+pub mod stream;
 pub mod uvc;
 
 use std::{

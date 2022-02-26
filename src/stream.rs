@@ -197,7 +197,7 @@ impl ReadStream {
     /// If `cb` returns an error, this function will still try to enqueue the buffer again. If that
     /// fails, the error that occurred during enqueuing will be returned, if it succeeds, the error
     /// returned by `cb` will be returned.
-    pub fn dequeue(&mut self, cb: impl FnOnce(ReadBufferView<'_>) -> Result<()>) -> Result<()> {
+    pub fn dequeue<T>(&mut self, cb: impl FnOnce(ReadBufferView<'_>) -> Result<T>) -> Result<T> {
         let mut buf: raw::Buffer = unsafe { mem::zeroed() };
         buf.type_ = self.buf_type;
         buf.memory = self.mem_type;
@@ -313,7 +313,7 @@ impl WriteStream {
     ///
     /// If no unqueued buffer is available, one is dequeued first (which may block until one is
     /// available).
-    pub fn enqueue(&mut self, cb: impl FnOnce(WriteBufferView<'_>) -> Result<()>) -> Result<()> {
+    pub fn enqueue<T>(&mut self, cb: impl FnOnce(WriteBufferView<'_>) -> Result<T>) -> Result<T> {
         let buf_index = match self.next_unqueued_buffer {
             Some(i) => i,
             None => {
@@ -339,7 +339,7 @@ impl WriteStream {
             unsafe { slice::from_raw_parts_mut(buffer.ptr as *mut u8, buffer.length as usize) };
         let view = WriteBufferView { data };
         match cb(view) {
-            Ok(()) => match self.enqueue_buffer(buf_index as u32) {
+            Ok(val) => match self.enqueue_buffer(buf_index as u32) {
                 Ok(()) => {
                     match self.next_unqueued_buffer {
                         Some(i) => {
@@ -355,7 +355,7 @@ impl WriteStream {
                             // Do nothing, next call will dequeue.
                         }
                     }
-                    Ok(())
+                    Ok(val)
                 }
                 Err(e) => {
                     // `buf_index` is definitely unqueued now.

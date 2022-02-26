@@ -24,7 +24,6 @@ fn main() -> livid::Result<()> {
     let meta = device.meta_capture(MetaFormat::new(Pixelformat::UVC))?;
 
     let mut stream = meta.into_stream(4)?;
-    stream.stream_on()?;
 
     println!("stream started, waiting for data");
     loop {

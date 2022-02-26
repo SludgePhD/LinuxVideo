@@ -1,4 +1,4 @@
-use livid::Device;
+use livid::{CtrlType, Device};
 
 fn main() -> livid::Result<()> {
     for res in livid::list()? {
@@ -81,7 +81,46 @@ fn list_device(device: Device) -> livid::Result<()> {
     for res in device.controls() {
         match res {
             Ok(desc) => {
-                println!("    - {:?}", desc);
+                print!(
+                    "    - [{:?}] \"{}\", {:?}",
+                    desc.id(),
+                    desc.name(),
+                    desc.control_type()
+                );
+
+                match desc.control_type() {
+                    CtrlType::INTEGER => {
+                        print!(" [{}-{}", desc.minimum(), desc.maximum());
+                        let step = desc.step();
+                        if step != 1 {
+                            print!(", step={step}");
+                        }
+                        print!(", default={}]", desc.default_value());
+                    }
+                    CtrlType::MENU => {
+                        print!(" [{}-{}]", desc.minimum(), desc.maximum());
+                    }
+                    _ => {}
+                }
+
+                println!();
+                if !desc.flags().is_empty() {
+                    println!("      {:?}", desc.flags());
+                }
+
+                if desc.control_type() == CtrlType::MENU {
+                    // Enumerate menu options.
+                    for res in device.enumerate_menu(&desc) {
+                        match res {
+                            Ok(item) => {
+                                println!("      {}: {}", item.index(), item.name());
+                            }
+                            Err(e) => {
+                                println!("      error: {}", e);
+                            }
+                        }
+                    }
+                }
             }
             Err(e) => {
                 println!("    - error: {}", e);

@@ -19,7 +19,7 @@ impl Pixelformat {
     /// predefined one.
     pub const MJPG: Self = fmt(b"MJPG");
 
-    /// Data is a sequence of regular JPEG still images.
+    /// Data is a sequence of regular JFIF JPEG still images.
     ///
     /// Images can be decoded with any off-the-shelf JPEG decoder, no preprocessing is needed.
     pub const JPEG: Self = fmt(b"JPEG");

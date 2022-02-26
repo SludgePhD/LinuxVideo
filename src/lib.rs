@@ -28,7 +28,7 @@ use raw::controls::Cid;
 pub use buf_type::*;
 pub use pixelformat::Pixelformat;
 pub use shared::*;
-use stream::ReadStream;
+use stream::{ReadStream, WriteStream};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -145,6 +145,22 @@ impl Device {
         }
     }
 
+    /// Returns an iterator over the valid values of a menu control.
+    pub fn enumerate_menu(&self, ctrl: &ControlDesc) -> TextMenuIter<'_> {
+        assert_eq!(
+            ctrl.control_type(),
+            CtrlType::MENU,
+            "`enumerate_menu` requires a menu control"
+        );
+
+        TextMenuIter {
+            device: self,
+            cid: ctrl.id(),
+            next_index: ctrl.minimum() as _,
+            max_index: ctrl.maximum() as _,
+        }
+    }
+
     pub fn read_control(&self, cid: Cid) -> Result<i32> {
         let mut control = raw::controls::Control { id: cid, value: 0 };
 
@@ -185,8 +201,7 @@ impl Device {
     ///
     /// The driver will adjust the values in `format` to the closest values it supports (the variant
     /// will not be changed). The modified `Format` is returned.
-    pub fn set_format_raw(&mut self, format: Format) -> Result<Format> {
-        // FIXME should probably be private
+    fn set_format_raw(&mut self, format: Format) -> Result<Format> {
         unsafe {
             let mut raw_format: raw::Format = mem::zeroed();
             match format {
@@ -325,6 +340,19 @@ pub struct VideoOutputDevice {
 impl VideoOutputDevice {
     pub fn format(&self) -> &PixFormat {
         &self.format
+    }
+
+    /// Initializes streaming I/O mode with the given number of buffers.
+    ///
+    /// Note that some drivers may fail to allocate even low buffer counts. For example v4l2loopback
+    /// seems to be limited to 2 buffers.
+    pub fn into_stream(self, buffer_count: u32) -> Result<WriteStream> {
+        Ok(WriteStream::new(
+            self.file,
+            BufType::VIDEO_CAPTURE,
+            Memory::MMAP,
+            buffer_count,
+        )?)
     }
 }
 
@@ -683,6 +711,61 @@ impl fmt::Debug for ControlDesc {
             .field("default_value", &self.default_value())
             .field("flags", &self.flags())
             .finish()
+    }
+}
+
+/// An iterator over a menu control's valid choices.
+///
+/// Note that the returned [`TextMenuItem`]s might not have contiguous indices, since this iterator
+/// automatically skips invalid indices.
+pub struct TextMenuIter<'a> {
+    device: &'a Device,
+    cid: Cid,
+    next_index: u32,
+    /// Highest allowed index.
+    max_index: u32,
+}
+
+impl Iterator for TextMenuIter<'_> {
+    type Item = Result<TextMenuItem>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_index > self.max_index {
+            None
+        } else {
+            loop {
+                unsafe {
+                    let mut raw = raw::QueryMenu {
+                        id: self.cid.0,
+                        index: self.next_index,
+                        ..mem::zeroed()
+                    };
+
+                    self.next_index += 1;
+                    match raw::querymenu(self.device.file.as_raw_fd(), &mut raw) {
+                        Ok(_) => return Some(Ok(TextMenuItem { raw })),
+                        Err(Errno::EINVAL) => continue,
+                        Err(other) => return Some(Err(other.into())),
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct TextMenuItem {
+    raw: raw::QueryMenu,
+}
+
+impl TextMenuItem {
+    /// The item's index. Setting the menu control to this value will choose this item.
+    pub fn index(&self) -> u32 {
+        self.raw.index
+    }
+
+    /// The human-readable name of this menu entry.
+    pub fn name(&self) -> &str {
+        byte_array_to_str(unsafe { &self.raw.name_or_value.name })
     }
 }
 

@@ -127,7 +127,9 @@ ffi_enum! {
 
 ffi_enum! {
     pub enum Memory: u32 {
+        /// Buffers are allocated by the driver and `mmap`ped into userspace.
         MMAP    = 1,
+        /// Buffers are allocated by userspace and a pointer is passed to the driver.
         USERPTR = 2,
         OVERLAY = 3,
         DMABUF  = 4,

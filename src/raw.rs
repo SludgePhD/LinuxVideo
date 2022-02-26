@@ -204,6 +204,20 @@ pub struct QueryCtrl {
     pub reserved: [u32; 2],
 }
 
+#[repr(C, packed)]
+pub struct QueryMenu {
+    pub id: u32,
+    pub index: u32,
+    pub name_or_value: QueryMenuUnion,
+    pub reserved: u32,
+}
+
+#[repr(C)]
+pub union QueryMenuUnion {
+    pub name: [u8; 32],
+    pub value: i64,
+}
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct RequestBuffers {
@@ -279,6 +293,7 @@ ioctl_readwrite!(enumoutput, 'V', 48, Output);
 ioctl_readwrite!(g_fmt, 'V', 4, Format);
 ioctl_readwrite!(s_fmt, 'V', 5, Format);
 ioctl_readwrite!(queryctrl, 'V', 36, QueryCtrl);
+ioctl_readwrite!(querymenu, 'V', 37, QueryMenu);
 ioctl_readwrite!(reqbufs, 'V', 8, RequestBuffers);
 ioctl_readwrite!(querybuf, 'V', 9, Buffer);
 ioctl_readwrite!(qbuf, 'V', 15, Buffer);

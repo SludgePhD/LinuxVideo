@@ -1,5 +1,8 @@
 //! Captures video and ignores the video data (printing a `.` to the screen for every frame
 //! received).
+//!
+//! Uses the [`std::io::Read`] implementation of [`livid::VideoCaptureDevice`] to capture image
+//! data.
 
 use std::{
     env,
@@ -31,8 +34,6 @@ fn main() -> livid::Result<()> {
     println!("negotiated format: {:?}", capture.format());
     let size = capture.format().size_image() as usize;
     let mut buf = vec![0; size];
-
-    // FIXME this used to use the streaming API, but that doesn't seem to work with my webcam
 
     println!("stream started, waiting for data");
     let mut frames = 0;

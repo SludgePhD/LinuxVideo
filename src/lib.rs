@@ -5,6 +5,7 @@
 #[macro_use]
 mod macros;
 mod buf_type;
+pub mod controls;
 pub mod format;
 mod pixelformat;
 mod raw;
@@ -12,6 +13,8 @@ mod shared;
 pub mod stream;
 pub mod uvc;
 
+use nix::errno::Errno;
+use pixelformat::Pixelformat;
 use std::{
     fmt,
     fs::{self, File, OpenOptions},
@@ -21,17 +24,20 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use format::{Format, MetaFormat, PixFormat};
-use nix::errno::Errno;
+use controls::{ControlDesc, ControlIter, TextMenuIter};
+use format::{Format, FormatDescIter, MetaFormat, PixFormat};
 use raw::controls::Cid;
+use shared::{
+    AnalogStd, InputCapabilities, InputStatus, InputType, Memory, OutputCapabilities, OutputType,
+};
+use stream::{ReadStream, WriteStream};
 
 pub use buf_type::*;
-pub use pixelformat::Pixelformat;
-pub use shared::*;
-use stream::{ReadStream, WriteStream};
+pub use shared::CapabilityFlags;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
+/// Returns an iterator over all connected V4L2 devices.
 pub fn list() -> Result<impl Iterator<Item = Result<Device>>> {
     Ok(fs::read_dir("/dev")?.flat_map(|file| {
         let file = match file {
@@ -74,6 +80,9 @@ pub struct Device {
 }
 
 impl Device {
+    /// Opens a V4L2 device file from the given path.
+    ///
+    /// If the path does not refer to a V4L2 device node, an error will be returned.
     pub fn open(path: &Path) -> Result<Self> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
         let mut this = Self {
@@ -90,6 +99,7 @@ impl Device {
         self.file.as_raw_fd()
     }
 
+    /// Returns the path to the V4L2 device.
     pub fn path(&self) -> Result<PathBuf> {
         Ok(fs::read_link(format!("/proc/self/fd/{}", self.fd()))?)
     }
@@ -113,12 +123,7 @@ impl Device {
     /// `VIDEO_OUTPUT_MPLANE`, `VIDEO_OVERLAY`, `SDR_CAPTURE`, `SDR_OUTPUT`, `META_CAPTURE`, or
     /// `META_OUTPUT`.
     pub fn formats(&self, buf_type: BufType) -> FormatDescIter<'_> {
-        FormatDescIter {
-            device: self,
-            buf_type,
-            next_index: 0,
-            finished: false,
-        }
+        FormatDescIter::new(self, buf_type)
     }
 
     pub fn inputs(&self) -> InputIter<'_> {
@@ -138,28 +143,12 @@ impl Device {
     }
 
     pub fn controls(&self) -> ControlIter<'_> {
-        ControlIter {
-            device: self,
-            next_cid: Cid::BASE,
-            finished: false,
-            use_ctrl_flag_next_ctrl: true,
-        }
+        ControlIter::new(self)
     }
 
     /// Returns an iterator over the valid values of a menu control.
     pub fn enumerate_menu(&self, ctrl: &ControlDesc) -> TextMenuIter<'_> {
-        assert_eq!(
-            ctrl.control_type(),
-            CtrlType::MENU,
-            "`enumerate_menu` requires a menu control"
-        );
-
-        TextMenuIter {
-            device: self,
-            cid: ctrl.id(),
-            next_index: ctrl.minimum() as _,
-            max_index: ctrl.maximum() as _,
-        }
+        TextMenuIter::new(self, ctrl)
     }
 
     pub fn read_control(&self, cid: Cid) -> Result<i32> {
@@ -295,7 +284,7 @@ impl Device {
     }
 }
 
-/// A V4L2 device configured for video capture ([`BufType::VIDEO_CAPTURE`]).
+/// A video device configured for video capture.
 pub struct VideoCaptureDevice {
     file: File,
     format: PixFormat,
@@ -374,6 +363,7 @@ impl Write for VideoOutputDevice {
     }
 }
 
+/// A device configured for metadata capture.
 pub struct MetaCaptureDevice {
     file: File,
     format: MetaFormat,
@@ -408,10 +398,17 @@ impl Read for MetaCaptureDevice {
     }
 }
 
+/// Stores generic device information.
+///
+/// Returned by [`Device::capabilities`].
 pub struct Capabilities(raw::Capabilities);
 
 impl Capabilities {
     /// Returns the identifier of the V4L2 driver that provides this device.
+    ///
+    /// Examples:
+    /// - `uvcvideo`
+    /// - `v4l2 loopback`
     pub fn driver(&self) -> &str {
         byte_array_to_str(&self.0.driver)
     }
@@ -425,6 +422,10 @@ impl Capabilities {
     }
 
     /// Returns a description of where on the system the device is attached.
+    ///
+    /// Examples:
+    /// - `usb-0000:0a:00.3-2.1`
+    /// - `platform:v4l2loopback-002`
     pub fn bus_info(&self) -> &str {
         byte_array_to_str(&self.0.bus_info)
     }
@@ -455,75 +456,6 @@ impl fmt::Debug for Capabilities {
             .field("bus_info", &self.bus_info())
             .field("capabilities", &self.0.capabilities)
             .field("device_caps", &self.0.device_caps)
-            .finish()
-    }
-}
-
-/// Iterator over a device's supported [`FormatDesc`]s.
-pub struct FormatDescIter<'a> {
-    device: &'a Device,
-    buf_type: BufType,
-    next_index: u32,
-    finished: bool,
-}
-
-impl Iterator for FormatDescIter<'_> {
-    type Item = Result<FormatDesc>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None;
-        }
-
-        unsafe {
-            let mut desc = raw::FmtDesc {
-                index: self.next_index,
-                type_: self.buf_type,
-                mbus_code: 0,
-                ..mem::zeroed()
-            };
-            match raw::enum_fmt(self.device.fd(), &mut desc) {
-                Ok(_) => {}
-                Err(e) => {
-                    self.finished = true;
-                    match e {
-                        Errno::EINVAL => return None,
-                        e => return Some(Err(e.into())),
-                    }
-                }
-            }
-
-            self.next_index += 1;
-
-            Some(Ok(FormatDesc(desc)))
-        }
-    }
-}
-
-pub struct FormatDesc(raw::FmtDesc);
-
-impl FormatDesc {
-    pub fn flags(&self) -> FmtFlags {
-        self.0.flags
-    }
-
-    pub fn description(&self) -> &str {
-        byte_array_to_str(&self.0.description)
-    }
-
-    pub fn pixelformat(&self) -> Pixelformat {
-        self.0.pixelformat
-    }
-}
-
-impl fmt::Debug for FormatDesc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Format")
-            .field("index", &self.0.index)
-            .field("type", &self.0.type_)
-            .field("flags", &self.0.flags)
-            .field("description", &self.description())
-            .field("pixelformat", &self.0.pixelformat)
             .finish()
     }
 }
@@ -599,174 +531,6 @@ impl Iterator for InputIter<'_> {
 
             Some(Ok(Input(raw)))
         }
-    }
-}
-
-pub struct ControlIter<'a> {
-    device: &'a Device,
-    next_cid: Cid,
-    finished: bool,
-    use_ctrl_flag_next_ctrl: bool,
-}
-
-impl Iterator for ControlIter<'_> {
-    type Item = Result<ControlDesc>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.finished {
-                return None;
-            }
-
-            if self.next_cid.0 >= Cid::LASTP1.0 && !self.use_ctrl_flag_next_ctrl {
-                return None;
-            }
-
-            unsafe {
-                let mut id = self.next_cid.0;
-                if self.use_ctrl_flag_next_ctrl {
-                    id |= CtrlFlags::NEXT_CTRL.bits();
-                }
-                let mut raw = raw::QueryCtrl {
-                    id,
-                    ..mem::zeroed()
-                };
-                match raw::queryctrl(self.device.fd(), &mut raw) {
-                    Ok(_) => {
-                        if self.use_ctrl_flag_next_ctrl {
-                            self.next_cid.0 = raw.id;
-                        } else {
-                            self.next_cid.0 += 1;
-                        }
-                    }
-                    Err(e) => {
-                        match e {
-                            Errno::EINVAL => {
-                                self.use_ctrl_flag_next_ctrl = false;
-                                self.next_cid.0 += 1;
-                                continue; // continue, because there might be gaps
-                            }
-                            e => {
-                                self.finished = true;
-                                return Some(Err(e.into()));
-                            }
-                        }
-                    }
-                }
-
-                if raw.flags.contains(CtrlFlags::DISABLED) {
-                    continue;
-                }
-
-                return Some(Ok(ControlDesc(raw)));
-            }
-        }
-    }
-}
-
-pub struct ControlDesc(raw::QueryCtrl);
-
-impl ControlDesc {
-    pub fn id(&self) -> Cid {
-        Cid(self.0.id)
-    }
-
-    pub fn name(&self) -> &str {
-        byte_array_to_str(&self.0.name)
-    }
-
-    pub fn control_type(&self) -> CtrlType {
-        self.0.type_
-    }
-
-    pub fn minimum(&self) -> i32 {
-        self.0.minimum
-    }
-
-    pub fn maximum(&self) -> i32 {
-        self.0.maximum
-    }
-
-    pub fn step(&self) -> i32 {
-        self.0.step
-    }
-
-    pub fn default_value(&self) -> i32 {
-        self.0.default_value
-    }
-
-    pub fn flags(&self) -> CtrlFlags {
-        self.0.flags
-    }
-}
-
-impl fmt::Debug for ControlDesc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ControlDesc")
-            .field("id", &self.id())
-            .field("name", &self.name())
-            .field("control_type", &self.control_type())
-            .field("minimum", &self.minimum())
-            .field("maximum", &self.maximum())
-            .field("step", &self.step())
-            .field("default_value", &self.default_value())
-            .field("flags", &self.flags())
-            .finish()
-    }
-}
-
-/// An iterator over a menu control's valid choices.
-///
-/// Note that the returned [`TextMenuItem`]s might not have contiguous indices, since this iterator
-/// automatically skips invalid indices.
-pub struct TextMenuIter<'a> {
-    device: &'a Device,
-    cid: Cid,
-    next_index: u32,
-    /// Highest allowed index.
-    max_index: u32,
-}
-
-impl Iterator for TextMenuIter<'_> {
-    type Item = Result<TextMenuItem>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next_index > self.max_index {
-            None
-        } else {
-            loop {
-                unsafe {
-                    let mut raw = raw::QueryMenu {
-                        id: self.cid.0,
-                        index: self.next_index,
-                        ..mem::zeroed()
-                    };
-
-                    self.next_index += 1;
-                    match raw::querymenu(self.device.fd(), &mut raw) {
-                        Ok(_) => return Some(Ok(TextMenuItem { raw })),
-                        Err(Errno::EINVAL) => continue,
-                        Err(other) => return Some(Err(other.into())),
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub struct TextMenuItem {
-    raw: raw::QueryMenu,
-}
-
-impl TextMenuItem {
-    /// The item's index. Setting the menu control to this value will choose this item.
-    pub fn index(&self) -> u32 {
-        self.raw.index
-    }
-
-    /// The human-readable name of this menu entry.
-    pub fn name(&self) -> &str {
-        byte_array_to_str(unsafe { &self.raw.name_or_value.name })
     }
 }
 

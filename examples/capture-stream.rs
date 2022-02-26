@@ -11,7 +11,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use livid::{format::PixFormat, Device, Pixelformat};
+use livid::{
+    format::{PixFormat, Pixelformat},
+    Device,
+};
 
 fn main() -> livid::Result<()> {
     env_logger::init();

@@ -1,6 +1,13 @@
+//! Image and pixel format definitions.
+
 use std::{fmt, mem};
 
-use crate::{raw, BufType, Pixelformat};
+use nix::errno::Errno;
+
+use crate::{byte_array_to_str, raw, BufType, Device, Result};
+
+pub use crate::pixelformat::Pixelformat;
+pub use crate::shared::FmtFlags;
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -186,6 +193,86 @@ impl fmt::Debug for MetaFormat {
         f.debug_struct("MetaFormat")
             .field("dataformat", &{ self.0.dataformat })
             .field("buffersize", &{ self.0.buffersize })
+            .finish()
+    }
+}
+
+/// Iterator over a device's supported [`FormatDesc`]s.
+pub struct FormatDescIter<'a> {
+    device: &'a Device,
+    buf_type: BufType,
+    next_index: u32,
+    finished: bool,
+}
+
+impl<'a> FormatDescIter<'a> {
+    pub(crate) fn new(device: &'a Device, buf_type: BufType) -> Self {
+        Self {
+            device,
+            buf_type,
+            next_index: 0,
+            finished: false,
+        }
+    }
+}
+
+impl Iterator for FormatDescIter<'_> {
+    type Item = Result<FormatDesc>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        unsafe {
+            let mut desc = raw::FmtDesc {
+                index: self.next_index,
+                type_: self.buf_type,
+                mbus_code: 0,
+                ..mem::zeroed()
+            };
+            match raw::enum_fmt(self.device.fd(), &mut desc) {
+                Ok(_) => {}
+                Err(e) => {
+                    self.finished = true;
+                    match e {
+                        Errno::EINVAL => return None,
+                        e => return Some(Err(e.into())),
+                    }
+                }
+            }
+
+            self.next_index += 1;
+
+            Some(Ok(FormatDesc(desc)))
+        }
+    }
+}
+
+pub struct FormatDesc(raw::FmtDesc);
+
+impl FormatDesc {
+    pub fn flags(&self) -> FmtFlags {
+        self.0.flags
+    }
+
+    pub fn description(&self) -> &str {
+        byte_array_to_str(&self.0.description)
+    }
+
+    pub fn pixelformat(&self) -> Pixelformat {
+        self.0.pixelformat
+    }
+}
+
+impl fmt::Debug for FormatDesc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Format")
+            .field("index", &self.0.index)
+            .field("type", &self.0.type_)
+            .field("flags", &self.0.flags)
+            .field("description", &self.description())
+            .field("pixelformat", &self.0.pixelformat)
             .finish()
     }
 }

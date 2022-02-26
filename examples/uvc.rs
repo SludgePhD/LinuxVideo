@@ -2,7 +2,11 @@
 
 use std::{env, path::Path};
 
-use livid::{format::MetaFormat, uvc::UvcMetadata, CapabilityFlags, Device, Pixelformat};
+use livid::{
+    format::{MetaFormat, Pixelformat},
+    uvc::UvcMetadata,
+    CapabilityFlags, Device,
+};
 
 fn main() -> livid::Result<()> {
     env_logger::init();

@@ -13,7 +13,10 @@ use std::{
 };
 
 use itertools::Itertools;
-use livid::{format::PixFormat, CapabilityFlags, Device, Pixelformat};
+use livid::{
+    format::{PixFormat, Pixelformat},
+    CapabilityFlags, Device,
+};
 
 const WIDTH: u32 = 120;
 const HEIGHT: u32 = 60;

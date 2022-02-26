@@ -200,7 +200,7 @@ pub struct QueryCtrl {
     pub maximum: i32,
     pub step: i32,
     pub default_value: i32,
-    pub flags: CtrlFlags,
+    pub flags: ControlFlags,
     pub reserved: [u32; 2],
 }
 

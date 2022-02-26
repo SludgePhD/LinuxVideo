@@ -17,6 +17,10 @@ ffi_enum! {
 }
 
 ffi_enum! {
+    /// Identifies a device control.
+    ///
+    /// This type has associated constants to refer to standard controls with predefined meanings,
+    /// but drivers can add their own driver-specific controls as well.
     pub enum Cid: u32 {
         BRIGHTNESS                  = Self::BASE.0 + 0, // comes first so it shows up in debug output
         BASE                        = CtrlClass::USER.0 | 0x900,

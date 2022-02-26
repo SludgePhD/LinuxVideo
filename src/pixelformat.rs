@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// Four character code (fourcc) identifying a pixel format.
+/// Four character code (fourcc) defining the encoding of pixel data in an image buffer.
 ///
 /// fourcc codes are documented on <https://www.fourcc.org/>.
 #[derive(Clone, Copy, PartialEq, Eq)]

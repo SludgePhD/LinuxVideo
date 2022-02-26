@@ -1,4 +1,4 @@
-use livid::{CtrlType, Device};
+use livid::{controls::CtrlType, Device};
 
 fn main() -> livid::Result<()> {
     for res in livid::list()? {

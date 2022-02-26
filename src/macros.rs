@@ -1,6 +1,7 @@
 /// ffi_enum! {}
 macro_rules! ffi_enum {
     (
+        $( #[$attrs:meta] )*
         $v:vis enum $name:ident: $native:ty {
             $(
                 $( #[$variant_attrs:meta] )*
@@ -9,6 +10,7 @@ macro_rules! ffi_enum {
             $(,)?
         }
     ) => {
+        $( #[$attrs] )*
         #[derive(Clone, Copy, PartialEq, Eq)]
         #[repr(transparent)]
         $v struct $name(pub(crate) $native);

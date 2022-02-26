@@ -147,7 +147,8 @@ ffi_enum! {
 }
 
 bitflags! {
-    pub struct CtrlFlags: u32 {
+    /// Flags describing the state of a device control.
+    pub struct ControlFlags: u32 {
         const DISABLED         = 0x0001;
         const GRABBED          = 0x0002;
         const READ_ONLY        = 0x0004;

@@ -86,17 +86,18 @@ impl Device {
         Ok(this)
     }
 
+    fn fd(&self) -> RawFd {
+        self.file.as_raw_fd()
+    }
+
     pub fn path(&self) -> Result<PathBuf> {
-        Ok(fs::read_link(format!(
-            "/proc/self/fd/{}",
-            self.file.as_raw_fd()
-        ))?)
+        Ok(fs::read_link(format!("/proc/self/fd/{}", self.fd()))?)
     }
 
     pub fn capabilities(&self) -> Result<Capabilities> {
         unsafe {
             let mut caps = MaybeUninit::uninit();
-            let res = raw::querycap(self.file.as_raw_fd(), caps.as_mut_ptr())?;
+            let res = raw::querycap(self.fd(), caps.as_mut_ptr())?;
             assert_eq!(res, 0);
             Ok(Capabilities(caps.assume_init()))
         }
@@ -165,7 +166,7 @@ impl Device {
         let mut control = raw::controls::Control { id: cid, value: 0 };
 
         unsafe {
-            raw::g_ctrl(self.file.as_raw_fd(), &mut control)?;
+            raw::g_ctrl(self.fd(), &mut control)?;
         }
 
         Ok(control.value)
@@ -174,7 +175,7 @@ impl Device {
     pub fn write_control(&mut self, cid: Cid, value: i32) -> Result<()> {
         let mut control = raw::controls::Control { id: cid, value };
         unsafe {
-            raw::s_ctrl(self.file.as_raw_fd(), &mut control)?;
+            raw::s_ctrl(self.fd(), &mut control)?;
         }
         Ok(())
     }
@@ -190,7 +191,7 @@ impl Device {
                 type_: buf_type,
                 ..mem::zeroed()
             };
-            raw::g_fmt(self.file.as_raw_fd(), &mut format)?;
+            raw::g_fmt(self.fd(), &mut format)?;
             let fmt = Format::from_raw(format)
                 .ok_or_else(|| format!("unsupported buffer type {:?}", buf_type))?;
             Ok(fmt)
@@ -234,7 +235,7 @@ impl Device {
                     raw_format.fmt.meta = f.to_raw();
                 }
             }
-            raw::s_fmt(self.file.as_raw_fd(), &mut raw_format)?;
+            raw::s_fmt(self.fd(), &mut raw_format)?;
             let fmt = Format::from_raw(raw_format).unwrap();
             Ok(fmt)
         }
@@ -481,7 +482,7 @@ impl Iterator for FormatDescIter<'_> {
                 mbus_code: 0,
                 ..mem::zeroed()
             };
-            match raw::enum_fmt(self.device.file.as_raw_fd(), &mut desc) {
+            match raw::enum_fmt(self.device.fd(), &mut desc) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
@@ -546,7 +547,7 @@ impl Iterator for OutputIter<'_> {
                 index: self.next_index,
                 ..mem::zeroed()
             };
-            match raw::enumoutput(self.device.file.as_raw_fd(), &mut raw) {
+            match raw::enumoutput(self.device.fd(), &mut raw) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
@@ -583,7 +584,7 @@ impl Iterator for InputIter<'_> {
                 index: self.next_index,
                 ..mem::zeroed()
             };
-            match raw::enuminput(self.device.file.as_raw_fd(), &mut raw) {
+            match raw::enuminput(self.device.fd(), &mut raw) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
@@ -630,7 +631,7 @@ impl Iterator for ControlIter<'_> {
                     id,
                     ..mem::zeroed()
                 };
-                match raw::queryctrl(self.device.file.as_raw_fd(), &mut raw) {
+                match raw::queryctrl(self.device.fd(), &mut raw) {
                     Ok(_) => {
                         if self.use_ctrl_flag_next_ctrl {
                             self.next_cid.0 = raw.id;
@@ -742,7 +743,7 @@ impl Iterator for TextMenuIter<'_> {
                     };
 
                     self.next_index += 1;
-                    match raw::querymenu(self.device.file.as_raw_fd(), &mut raw) {
+                    match raw::querymenu(self.device.fd(), &mut raw) {
                         Ok(_) => return Some(Ok(TextMenuItem { raw })),
                         Err(Errno::EINVAL) => continue,
                         Err(other) => return Some(Err(other.into())),

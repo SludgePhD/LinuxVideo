@@ -16,7 +16,8 @@ impl Pixelformat {
     /// Motion JPEG, a sequence of JPEG images with omitted huffman tables.
     ///
     /// The transmitted JPEG images lack the "DHT" frame (Define Huffman Table), and instead use a
-    /// predefined one.
+    /// predefined one. Most common JPEG decoders will handle this fine and don't need any extra
+    /// preprocessing.
     pub const MJPG: Self = fmt(b"MJPG");
 
     /// Data is a sequence of regular JFIF JPEG still images.

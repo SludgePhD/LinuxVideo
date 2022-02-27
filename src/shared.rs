@@ -487,6 +487,18 @@ bitflags! {
     }
 }
 
+bitflags! {
+    pub struct StreamParamCaps: u32 {
+        const TIMEPERFRAME = 0x1000;
+    }
+}
+
+bitflags! {
+    pub struct CaptureParamFlags: u32 {
+        const HIGHQUALITY = 0x0001;
+    }
+}
+
 /// A fractional value (`numerator / denominator`).
 #[derive(Clone, Copy)]
 #[repr(C)]

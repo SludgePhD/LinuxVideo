@@ -28,7 +28,8 @@ use controls::{ControlDesc, ControlIter, TextMenuIter};
 use format::{Format, FormatDescIter, FrameIntervals, FrameSizes, MetaFormat, PixFormat};
 use raw::controls::Cid;
 use shared::{
-    AnalogStd, InputCapabilities, InputStatus, InputType, Memory, OutputCapabilities, OutputType,
+    AnalogStd, CaptureParamFlags, InputCapabilities, InputStatus, InputType, Memory,
+    OutputCapabilities, OutputType, StreamParamCaps,
 };
 use stream::{ReadStream, WriteStream};
 
@@ -310,6 +311,29 @@ impl VideoCaptureDevice {
     /// This may (and usually will) differ from the format passed to [`Device::video_capture`].
     pub fn format(&self) -> &PixFormat {
         &self.format
+    }
+
+    /// Requests a change to the frame interval.
+    ///
+    /// Returns the actual frame interval chosen by the driver.
+    pub fn set_frame_interval(&self, interval: Fract) -> Result<Fract> {
+        unsafe {
+            let mut parm = raw::StreamParm {
+                type_: BufType::VIDEO_CAPTURE,
+                union: raw::StreamParmUnion {
+                    capture: raw::CaptureParm {
+                        timeperframe: interval,
+                        capability: StreamParamCaps::TIMEPERFRAME,
+                        capturemode: CaptureParamFlags::empty(),
+                        extendedmode: 0,
+                        readbuffers: 0,
+                        reserved: [0; 4],
+                    },
+                },
+            };
+            raw::s_parm(self.file.as_raw_fd(), &mut parm)?;
+            Ok(parm.union.capture.timeperframe)
+        }
     }
 
     /// Initializes streaming I/O mode with the given number of buffers.

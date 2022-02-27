@@ -337,6 +337,41 @@ pub struct FrmIvalStepwise {
     pub step: Fract,
 }
 
+#[repr(C)]
+pub struct StreamParm {
+    pub type_: BufType,
+    pub union: StreamParmUnion,
+}
+
+#[repr(C)]
+pub union StreamParmUnion {
+    pub capture: CaptureParm,
+    pub output: OutputParm,
+    pub raw_data: [u8; 200],
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct CaptureParm {
+    pub capability: StreamParamCaps,
+    pub capturemode: CaptureParamFlags,
+    pub timeperframe: Fract,
+    pub extendedmode: u32,
+    pub readbuffers: u32,
+    pub reserved: [u32; 4],
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct OutputParm {
+    pub capability: StreamParamCaps,
+    pub outputmode: u32,
+    pub timeperframe: Fract,
+    pub extendedmode: u32,
+    pub writebuffers: u32,
+    pub reserved: [u32; 4],
+}
+
 ioctl_read!(querycap, 'V', 0, Capabilities);
 ioctl_readwrite!(enum_fmt, 'V', 2, FmtDesc);
 ioctl_readwrite!(enuminput, 'V', 26, Input);
@@ -351,6 +386,7 @@ ioctl_readwrite!(qbuf, 'V', 15, Buffer);
 ioctl_readwrite!(dqbuf, 'V', 17, Buffer);
 ioctl_write_ptr!(streamon, 'V', 18, BufType);
 ioctl_write_ptr!(streamoff, 'V', 19, BufType);
+ioctl_readwrite!(s_parm, 'V', 22, StreamParm);
 ioctl_readwrite!(g_ctrl, 'V', 27, controls::Control);
 ioctl_readwrite!(s_ctrl, 'V', 28, controls::Control);
 ioctl_readwrite!(enum_framesizes, 'V', 74, FrmSizeEnum);

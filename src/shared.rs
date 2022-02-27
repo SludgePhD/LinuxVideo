@@ -1,5 +1,7 @@
 //! FFI-compatible types that may also be exposed to Rust code.
 
+use std::fmt;
+
 // This macro enforces that all `bitflags!` types in here are marked
 // `#[repr(transparent)]` and thus FFI-safe.
 macro_rules! bitflags {
@@ -148,6 +150,14 @@ ffi_enum! {
 
 ffi_enum! {
     pub enum FrmSizeType: u32 {
+        DISCRETE = 1,
+        CONTINUOUS = 2,
+        STEPWISE = 3,
+    }
+}
+
+ffi_enum! {
+    pub enum FrmIvalType: u32 {
         DISCRETE = 1,
         CONTINUOUS = 2,
         STEPWISE = 3,
@@ -474,5 +484,49 @@ bitflags! {
         const USERBITS_MASK        = 0x000C;
         const USERBITS_USERDEFINED = 0x0000;
         const USERBITS_8BITCHARS   = 0x0008;
+    }
+}
+
+/// A fractional value (`numerator / denominator`).
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct Fract {
+    numerator: u32,
+    denominator: u32,
+}
+
+impl Fract {
+    #[inline]
+    pub fn new(numerator: u32, denominator: u32) -> Self {
+        Self {
+            numerator,
+            denominator,
+        }
+    }
+
+    #[inline]
+    pub fn numerator(&self) -> u32 {
+        self.numerator
+    }
+
+    #[inline]
+    pub fn denominator(&self) -> u32 {
+        self.denominator
+    }
+
+    pub fn as_f32(&self) -> f32 {
+        self.numerator as f32 / self.denominator as f32
+    }
+}
+
+impl fmt::Display for Fract {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.numerator, self.denominator)
+    }
+}
+
+impl fmt::Debug for Fract {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }

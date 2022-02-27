@@ -83,13 +83,6 @@ pub struct Rect {
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct Fract {
-    pub numerator: u32,
-    pub denominator: u32,
-}
-
-#[derive(Clone, Copy)]
-#[repr(C)]
 pub struct Area {
     pub width: u32,
     pub height: u32,
@@ -319,6 +312,31 @@ pub struct FrmSizeStepwise {
     pub step_height: u32,
 }
 
+#[repr(C)]
+pub struct FrmIvalEnum {
+    pub index: u32,
+    pub pixel_format: Pixelformat,
+    pub width: u32,
+    pub height: u32,
+    pub type_: FrmIvalType,
+    pub union: FrmIvalUnion,
+    pub reserved: [u32; 2],
+}
+
+#[repr(C)]
+pub union FrmIvalUnion {
+    pub discrete: Fract,
+    pub stepwise: FrmIvalStepwise,
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct FrmIvalStepwise {
+    pub min: Fract,
+    pub max: Fract,
+    pub step: Fract,
+}
+
 ioctl_read!(querycap, 'V', 0, Capabilities);
 ioctl_readwrite!(enum_fmt, 'V', 2, FmtDesc);
 ioctl_readwrite!(enuminput, 'V', 26, Input);
@@ -336,3 +354,4 @@ ioctl_write_ptr!(streamoff, 'V', 19, BufType);
 ioctl_readwrite!(g_ctrl, 'V', 27, controls::Control);
 ioctl_readwrite!(s_ctrl, 'V', 28, controls::Control);
 ioctl_readwrite!(enum_framesizes, 'V', 74, FrmSizeEnum);
+ioctl_readwrite!(enum_frameintervals, 'V', 75, FrmIvalEnum);

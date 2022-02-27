@@ -25,7 +25,7 @@ use std::{
 };
 
 use controls::{ControlDesc, ControlIter, TextMenuIter};
-use format::{Format, FormatDescIter, FrameSizes, MetaFormat, PixFormat};
+use format::{Format, FormatDescIter, FrameIntervals, FrameSizes, MetaFormat, PixFormat};
 use raw::controls::Cid;
 use shared::{
     AnalogStd, InputCapabilities, InputStatus, InputType, Memory, OutputCapabilities, OutputType,
@@ -33,7 +33,7 @@ use shared::{
 use stream::{ReadStream, WriteStream};
 
 pub use buf_type::*;
-pub use shared::CapabilityFlags;
+pub use shared::{CapabilityFlags, Fract};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -129,6 +129,15 @@ impl Device {
     /// Returns the supported frame sizes for a given pixel format.
     pub fn frame_sizes(&self, pixel_format: Pixelformat) -> Result<FrameSizes> {
         FrameSizes::new(self, pixel_format)
+    }
+
+    pub fn frame_intervals(
+        &self,
+        pixel_format: Pixelformat,
+        width: u32,
+        height: u32,
+    ) -> Result<FrameIntervals> {
+        FrameIntervals::new(self, pixel_format, width, height)
     }
 
     pub fn inputs(&self) -> InputIter<'_> {

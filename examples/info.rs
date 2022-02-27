@@ -35,41 +35,67 @@ fn list_device(device: Device) -> livid::Result<()> {
                         println!("    {:?}", fmt.flags());
                     }
 
-                    match device.frame_sizes(fmt.pixelformat()) {
-                        Ok(sizes) => match sizes {
-                            FrameSizes::Discrete(iter) => {
-                                for size in iter {
-                                    println!(
-                                        "    - [{:2}] {}x{}",
-                                        size.index(),
-                                        size.width(),
-                                        size.height(),
-                                    );
-                                }
-                            }
-                            FrameSizes::Stepwise(s) => {
+                    let sizes = device.frame_sizes(fmt.pixelformat())?;
+                    match sizes {
+                        FrameSizes::Discrete(iter) => {
+                            for size in iter {
+                                let intervals = device.frame_intervals(
+                                    fmt.pixelformat(),
+                                    size.width(),
+                                    size.height(),
+                                )?;
                                 println!(
-                                    "    - {}x{} to {}x{} (step {}x{})",
-                                    s.min_width(),
-                                    s.min_height(),
-                                    s.max_width(),
-                                    s.max_height(),
-                                    s.step_width(),
-                                    s.step_height(),
+                                    "    - [{:2}] {}x{} @ {}",
+                                    size.index(),
+                                    size.width(),
+                                    size.height(),
+                                    intervals,
                                 );
                             }
-                            FrameSizes::Continuous(s) => {
-                                println!(
-                                    "    - {}x{} to {}x{}",
-                                    s.min_width(),
-                                    s.min_height(),
-                                    s.max_width(),
-                                    s.max_height(),
-                                );
-                            }
-                        },
-                        Err(e) => {
-                            println!("    - error fetching frame sizes: {}", e);
+                        }
+                        FrameSizes::Stepwise(s) => {
+                            let min_ivals = device.frame_intervals(
+                                fmt.pixelformat(),
+                                s.min_width(),
+                                s.min_height(),
+                            )?;
+                            let max_ivals = device.frame_intervals(
+                                fmt.pixelformat(),
+                                s.max_width(),
+                                s.max_height(),
+                            )?;
+                            println!(
+                                "    - {}x{} to {}x{} (step {}x{}) @ {} to {}",
+                                s.min_width(),
+                                s.min_height(),
+                                s.max_width(),
+                                s.max_height(),
+                                s.step_width(),
+                                s.step_height(),
+                                min_ivals,
+                                max_ivals,
+                            );
+                        }
+                        FrameSizes::Continuous(s) => {
+                            let min_ivals = device.frame_intervals(
+                                fmt.pixelformat(),
+                                s.min_width(),
+                                s.min_height(),
+                            )?;
+                            let max_ivals = device.frame_intervals(
+                                fmt.pixelformat(),
+                                s.max_width(),
+                                s.max_height(),
+                            )?;
+                            println!(
+                                "    - {}x{} to {}x{} @ {} to {}",
+                                s.min_width(),
+                                s.min_height(),
+                                s.max_width(),
+                                s.max_height(),
+                                min_ivals,
+                                max_ivals,
+                            );
                         }
                     }
                 }

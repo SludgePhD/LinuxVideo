@@ -4,8 +4,8 @@ use std::{fmt, mem};
 
 use nix::errno::Errno;
 
-use crate::shared::FrmSizeType;
-use crate::{byte_array_to_str, raw, BufType, Device, Result};
+use crate::shared::{FrmIvalType, FrmSizeType};
+use crate::{byte_array_to_str, raw, BufType, Device, Fract, Result};
 
 pub use crate::pixelformat::Pixelformat;
 pub use crate::shared::FmtFlags;
@@ -377,5 +377,136 @@ impl DiscreteFrameSize {
 
     pub fn index(&self) -> u32 {
         self.index
+    }
+}
+
+pub enum FrameIntervals {
+    Discrete(Vec<DiscreteFrameInterval>),
+    Stepwise(StepwiseFrameIntervals),
+    Continuous(StepwiseFrameIntervals),
+}
+
+impl FrameIntervals {
+    pub(crate) fn new(
+        device: &Device,
+        pixel_format: Pixelformat,
+        width: u32,
+        height: u32,
+    ) -> Result<Self> {
+        unsafe {
+            let mut desc = raw::FrmIvalEnum {
+                index: 0,
+                pixel_format,
+                width,
+                height,
+                ..mem::zeroed()
+            };
+            raw::enum_frameintervals(device.fd(), &mut desc)?;
+
+            match desc.type_ {
+                FrmIvalType::DISCRETE => {
+                    let mut ivals = vec![DiscreteFrameInterval {
+                        raw: desc.union.discrete,
+                        index: 0,
+                    }];
+                    for index in 1.. {
+                        let mut desc = raw::FrmIvalEnum {
+                            index,
+                            pixel_format,
+                            width,
+                            height,
+                            ..mem::zeroed()
+                        };
+                        match raw::enum_frameintervals(device.fd(), &mut desc) {
+                            Ok(_) => {
+                                assert_eq!(desc.type_, FrmIvalType::DISCRETE);
+                                ivals.push(DiscreteFrameInterval {
+                                    raw: desc.union.discrete,
+                                    index,
+                                });
+                            }
+                            Err(Errno::EINVAL) => break,
+                            Err(e) => return Err(e.into()),
+                        }
+                    }
+
+                    Ok(FrameIntervals::Discrete(ivals))
+                }
+                FrmIvalType::CONTINUOUS => Ok(FrameIntervals::Continuous(StepwiseFrameIntervals(
+                    desc.union.stepwise,
+                ))),
+                FrmIvalType::STEPWISE => Ok(FrameIntervals::Stepwise(StepwiseFrameIntervals(
+                    desc.union.stepwise,
+                ))),
+                _ => {
+                    // sadly, this can happen with a v4l2loopback device that no application is outputting data to
+                    log::error!("driver bug: unknown frame interval type {:?}", desc.type_);
+                    Ok(FrameIntervals::Continuous(StepwiseFrameIntervals(
+                        raw::FrmIvalStepwise {
+                            min: Fract::new(1, 600),
+                            max: Fract::new(1, 1),
+                            // FIXME: docs say that `step` is "1", but surely "1 second" is not the right step size?
+                            // https://kernel.org/doc/html/v5.17-rc3/userspace-api/media/v4l/vidioc-enum-frameintervals.html
+                            step: Fract::new(1, 1),
+                        },
+                    )))
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Display for FrameIntervals {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FrameIntervals::Discrete(list) => {
+                for (i, ival) in list.iter().enumerate() {
+                    if i != 0 {
+                        f.write_str(", ")?;
+                    }
+
+                    write!(f, "{}", ival.fract())?;
+                }
+
+                Ok(())
+            }
+            FrameIntervals::Stepwise(ival) => {
+                write!(f, "{}-{} (step {})", ival.min(), ival.max(), ival.step())
+            }
+            FrameIntervals::Continuous(ival) => {
+                write!(f, "{}-{}", ival.min(), ival.max())
+            }
+        }
+    }
+}
+
+pub struct DiscreteFrameInterval {
+    index: u32,
+    raw: Fract,
+}
+
+impl DiscreteFrameInterval {
+    pub fn index(&self) -> u32 {
+        self.index
+    }
+
+    pub fn fract(&self) -> &Fract {
+        &self.raw
+    }
+}
+
+pub struct StepwiseFrameIntervals(raw::FrmIvalStepwise);
+
+impl StepwiseFrameIntervals {
+    pub fn min(&self) -> &Fract {
+        &self.0.min
+    }
+
+    pub fn max(&self) -> &Fract {
+        &self.0.max
+    }
+
+    pub fn step(&self) -> &Fract {
+        &self.0.step
     }
 }

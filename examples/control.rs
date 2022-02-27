@@ -65,10 +65,10 @@ fn main() -> livid::Result<()> {
     match cid {
         Some(cid) => match value {
             Some(value) => {
-                device.write_control(cid, value)?;
+                device.write_control_raw(cid, value)?;
             }
             None => {
-                let value = device.read_control(cid)?;
+                let value = device.read_control_raw(cid)?;
                 println!("{:?} control value: {}", cid, value);
             }
         },

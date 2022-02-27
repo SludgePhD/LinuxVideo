@@ -1,9 +1,10 @@
-//! Image and pixel format definitions.
+//! Image and pixel foDiscreteFrameSize { field1: desc.union.discrete };
 
 use std::{fmt, mem};
 
 use nix::errno::Errno;
 
+use crate::shared::FrmSizeType;
 use crate::{byte_array_to_str, raw, BufType, Device, Result};
 
 pub use crate::pixelformat::Pixelformat;
@@ -274,5 +275,107 @@ impl fmt::Debug for FormatDesc {
             .field("description", &self.description())
             .field("pixelformat", &self.0.pixelformat)
             .finish()
+    }
+}
+
+pub enum FrameSizes {
+    Discrete(Vec<DiscreteFrameSize>),
+    Stepwise(StepwiseFrameSizes),
+    Continuous(StepwiseFrameSizes),
+}
+
+impl FrameSizes {
+    pub(crate) fn new(device: &Device, pixel_format: Pixelformat) -> Result<Self> {
+        unsafe {
+            let mut desc = raw::FrmSizeEnum {
+                index: 0,
+                pixel_format,
+                ..mem::zeroed()
+            };
+            raw::enum_framesizes(device.fd(), &mut desc)?;
+
+            match desc.type_ {
+                FrmSizeType::DISCRETE => {
+                    let mut sizes = vec![DiscreteFrameSize {
+                        raw: desc.union.discrete,
+                        index: 0,
+                    }];
+                    for index in 1.. {
+                        let mut desc = raw::FrmSizeEnum {
+                            index,
+                            pixel_format,
+                            ..mem::zeroed()
+                        };
+                        match raw::enum_framesizes(device.fd(), &mut desc) {
+                            Ok(_) => {
+                                assert_eq!(desc.type_, FrmSizeType::DISCRETE);
+                                sizes.push(DiscreteFrameSize {
+                                    raw: desc.union.discrete,
+                                    index,
+                                });
+                            }
+                            Err(Errno::EINVAL) => break,
+                            Err(e) => return Err(e.into()),
+                        }
+                    }
+
+                    Ok(FrameSizes::Discrete(sizes))
+                }
+                FrmSizeType::CONTINUOUS => Ok(FrameSizes::Continuous(StepwiseFrameSizes(
+                    desc.union.stepwise,
+                ))),
+                FrmSizeType::STEPWISE => Ok(FrameSizes::Stepwise(StepwiseFrameSizes(
+                    desc.union.stepwise,
+                ))),
+                _ => unreachable!("unknown frame size type {:?}", desc.type_),
+            }
+        }
+    }
+}
+
+pub struct StepwiseFrameSizes(raw::FrmSizeStepwise);
+
+pub struct DiscreteFrameSize {
+    raw: raw::FrmSizeDiscrete,
+    index: u32,
+}
+
+impl StepwiseFrameSizes {
+    pub fn min_width(&self) -> u32 {
+        self.0.min_width
+    }
+
+    pub fn min_height(&self) -> u32 {
+        self.0.min_height
+    }
+
+    pub fn max_width(&self) -> u32 {
+        self.0.max_width
+    }
+
+    pub fn max_height(&self) -> u32 {
+        self.0.max_height
+    }
+
+    pub fn step_width(&self) -> u32 {
+        self.0.step_width
+    }
+
+    pub fn step_height(&self) -> u32 {
+        self.0.step_height
+    }
+}
+
+impl DiscreteFrameSize {
+    pub fn width(&self) -> u32 {
+        self.raw.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.raw.height
+    }
+
+    pub fn index(&self) -> u32 {
+        self.index
     }
 }

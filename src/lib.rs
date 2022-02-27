@@ -25,7 +25,7 @@ use std::{
 };
 
 use controls::{ControlDesc, ControlIter, TextMenuIter};
-use format::{Format, FormatDescIter, MetaFormat, PixFormat};
+use format::{Format, FormatDescIter, FrameSizes, MetaFormat, PixFormat};
 use raw::controls::Cid;
 use shared::{
     AnalogStd, InputCapabilities, InputStatus, InputType, Memory, OutputCapabilities, OutputType,
@@ -117,13 +117,18 @@ impl Device {
         BufTypes::from_capabilities(self.available_capabilities)
     }
 
-    /// Enumerates the supported formats of a stream.
+    /// Enumerates the supported pixel formats of a stream.
     ///
     /// `buf_type` must be one of `VIDEO_CAPTURE`, `VIDEO_CAPTURE_MPLANE`, `VIDEO_OUTPUT`,
     /// `VIDEO_OUTPUT_MPLANE`, `VIDEO_OVERLAY`, `SDR_CAPTURE`, `SDR_OUTPUT`, `META_CAPTURE`, or
     /// `META_OUTPUT`.
     pub fn formats(&self, buf_type: BufType) -> FormatDescIter<'_> {
         FormatDescIter::new(self, buf_type)
+    }
+
+    /// Returns the supported frame sizes for a given pixel format.
+    pub fn frame_sizes(&self, pixel_format: Pixelformat) -> Result<FrameSizes> {
+        FrameSizes::new(self, pixel_format)
     }
 
     pub fn inputs(&self) -> InputIter<'_> {
@@ -151,7 +156,7 @@ impl Device {
         TextMenuIter::new(self, ctrl)
     }
 
-    pub fn read_control(&self, cid: Cid) -> Result<i32> {
+    pub fn read_control_raw(&self, cid: Cid) -> Result<i32> {
         let mut control = raw::controls::Control { id: cid, value: 0 };
 
         unsafe {
@@ -161,7 +166,7 @@ impl Device {
         Ok(control.value)
     }
 
-    pub fn write_control(&mut self, cid: Cid, value: i32) -> Result<()> {
+    pub fn write_control_raw(&mut self, cid: Cid, value: i32) -> Result<()> {
         let mut control = raw::controls::Control { id: cid, value };
         unsafe {
             raw::s_ctrl(self.fd(), &mut control)?;

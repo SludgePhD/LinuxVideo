@@ -146,6 +146,14 @@ ffi_enum! {
     }
 }
 
+ffi_enum! {
+    pub enum FrmSizeType: u32 {
+        DISCRETE = 1,
+        CONTINUOUS = 2,
+        STEPWISE = 3,
+    }
+}
+
 bitflags! {
     /// Flags describing the state of a device control.
     pub struct ControlFlags: u32 {

@@ -286,6 +286,39 @@ pub union PlaneMemoryUnion {
     pub fd: i32,
 }
 
+#[repr(C)]
+pub struct FrmSizeEnum {
+    pub index: u32,
+    pub pixel_format: Pixelformat,
+    pub type_: FrmSizeType,
+    pub union: FrmSizeUnion,
+    pub reserved: [u32; 2],
+}
+
+#[repr(C)]
+pub union FrmSizeUnion {
+    pub discrete: FrmSizeDiscrete,
+    pub stepwise: FrmSizeStepwise,
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct FrmSizeDiscrete {
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct FrmSizeStepwise {
+    pub min_width: u32,
+    pub max_width: u32,
+    pub step_width: u32,
+    pub min_height: u32,
+    pub max_height: u32,
+    pub step_height: u32,
+}
+
 ioctl_read!(querycap, 'V', 0, Capabilities);
 ioctl_readwrite!(enum_fmt, 'V', 2, FmtDesc);
 ioctl_readwrite!(enuminput, 'V', 26, Input);
@@ -302,3 +335,4 @@ ioctl_write_ptr!(streamon, 'V', 18, BufType);
 ioctl_write_ptr!(streamoff, 'V', 19, BufType);
 ioctl_readwrite!(g_ctrl, 'V', 27, controls::Control);
 ioctl_readwrite!(s_ctrl, 'V', 28, controls::Control);
+ioctl_readwrite!(enum_framesizes, 'V', 74, FrmSizeEnum);

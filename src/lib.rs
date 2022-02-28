@@ -27,14 +27,14 @@ use std::{
 use controls::{ControlDesc, ControlIter, TextMenuIter};
 use format::{Format, FormatDescIter, FrameIntervals, FrameSizes, MetaFormat, PixFormat};
 use raw::controls::Cid;
-use shared::{
-    AnalogStd, CaptureParamFlags, InputCapabilities, InputStatus, InputType, Memory,
-    OutputCapabilities, OutputType, StreamParamCaps,
-};
+use shared::{CaptureParamFlags, Memory, StreamParamCaps};
 use stream::{ReadStream, WriteStream};
 
 pub use buf_type::*;
-pub use shared::{CapabilityFlags, Fract};
+pub use shared::{
+    AnalogStd, CapabilityFlags, Fract, InputCapabilities, InputStatus, InputType,
+    OutputCapabilities, OutputType,
+};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 

@@ -34,6 +34,8 @@ struct Buffers {
     buffers: Vec<Buffer>,
 }
 
+unsafe impl Send for Buffers {}
+
 impl Buffers {
     fn allocate(fd: c_int, buf_type: BufType, mem_type: Memory, buffer_count: u32) -> Result<Self> {
         let alloc_type = match mem_type {

@@ -30,9 +30,9 @@ impl Pixelformat {
     /// Data is a stream of [`UvcMetadata`][crate::uvc::UvcMetadata] structures.
     pub const UVC: Self = fmt(b"UVCH");
 
-    /// `yyyyyyyy uuuuuuuu YYYYYYYY vvvvvvvv`
+    /// Packed YUV/YCbCr data with 4:2:2 chroma subsampling.
     ///
-    /// Packed YUV/YCbCr data with 4:2:2 chroma subsampling in the horizontal direction.
+    /// `yyyyyyyy uuuuuuuu YYYYYYYY vvvvvvvv`
     ///
     /// `uuuuuuuu` and `vvvvvvvv` are shared by 2 neighboring pixels, while `yyyyyyyy` is the left
     /// pixel's Y value, and `YYYYYYYY` is the right pixel's Y value.

@@ -2,7 +2,7 @@
 
 use std::{env, path::Path};
 
-use livid::{controls::CtrlType, format::FrameSizes, Device};
+use livid::{controls::CtrlType, format::FrameSizes, BufType, Device};
 
 fn main() -> livid::Result<()> {
     env_logger::init();
@@ -35,7 +35,18 @@ fn list_device(device: Device) -> livid::Result<()> {
                         println!("    {:?}", fmt.flags());
                     }
 
-                    let sizes = device.frame_sizes(fmt.pixelformat())?;
+                    if buf == BufType::META_CAPTURE || buf == BufType::META_OUTPUT {
+                        // Metadata formats like `UVCH` will return an error from `frame_sizes`.
+                        continue;
+                    }
+
+                    let sizes = match device.frame_sizes(fmt.pixelformat()) {
+                        Ok(sizes) => sizes,
+                        Err(e) => {
+                            println!("  - error while fetching supported frame sizes: {}", e);
+                            continue;
+                        }
+                    };
                     match sizes {
                         FrameSizes::Discrete(iter) => {
                             for size in iter {

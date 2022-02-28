@@ -128,6 +128,11 @@ impl Device {
     }
 
     /// Returns the supported frame sizes for a given pixel format.
+    ///
+    /// # Errors
+    ///
+    /// An `ENOTTY` error will be returned if `pixel_format` specifies a format that does not
+    /// describe video data (for example, [`Pixelformat::UVC`] or other metadata formats).
     pub fn frame_sizes(&self, pixel_format: Pixelformat) -> Result<FrameSizes> {
         FrameSizes::new(self, pixel_format)
     }
@@ -422,8 +427,6 @@ impl MetaCaptureDevice {
             buffer_count,
         )?)
     }
-
-    // FIXME: footgun: `into_stream` not starting the stream leaves user (me) dumbfounded
 }
 
 /// Performs a direct `read()` from the video device.
@@ -572,29 +575,49 @@ impl Iterator for InputIter<'_> {
     }
 }
 
+/// Information about a device output.
 pub struct Output(raw::Output);
 
 impl Output {
+    /// Returns the output's name.
+    ///
+    /// Examples:
+    /// - `loopback in`
     pub fn name(&self) -> &str {
         byte_array_to_str(&self.0.name)
     }
 
+    /// Returns what kind of device this output is.
+    #[inline]
     pub fn output_type(&self) -> OutputType {
         self.0.type_
     }
 
+    /// Returns the set of selectable audio sources when this output is active.
+    ///
+    /// This may return 0 even if the device supports audio inputs to indicate that the application
+    /// cannot choose an audio input.
+    #[inline]
     pub fn audioset(&self) -> u32 {
         self.0.audioset
     }
 
+    /// Returns the modulator index if this input is of type [`OutputType::MODULATOR`].
+    ///
+    /// For non-modulator outputs, this value should be ignored.
+    #[inline]
     pub fn modulator(&self) -> u32 {
         self.0.modulator
     }
 
+    /// Returns the set of supported analog video standards.
+    #[inline]
     pub fn std(&self) -> AnalogStd {
         self.0.std
     }
 
+    /// Returns the capability flags of this output.
+    #[inline]
     pub fn capabilities(&self) -> OutputCapabilities {
         self.0.capabilities
     }
@@ -614,33 +637,59 @@ impl fmt::Debug for Output {
     }
 }
 
+/// Information about a device input.
 pub struct Input(raw::Input);
 
 impl Input {
+    /// Returns the name of the input.
+    ///
+    /// Examples:
+    /// - `Camera 1`
+    /// - `loopback`
     pub fn name(&self) -> &str {
         byte_array_to_str(&self.0.name)
     }
 
+    /// Returns what kind of device this input is.
+    #[inline]
     pub fn input_type(&self) -> InputType {
         self.0.type_
     }
 
+    /// Returns the set of selectable audio sources when this input is active.
+    ///
+    /// This may return 0 even if the device supports audio inputs to indicate that the application
+    /// cannot choose an audio input.
+    #[inline]
     pub fn audioset(&self) -> u32 {
         self.0.audioset
     }
 
+    /// Returns the tuner index if this input is of type [`InputType::TUNER`].
+    ///
+    /// For non-tuner inputs, this value should be ignored.
+    #[inline]
     pub fn tuner(&self) -> u32 {
         self.0.tuner
     }
 
+    /// Returns the set of supported analog video standards for this input.
+    #[inline]
     pub fn std(&self) -> AnalogStd {
         self.0.std
     }
 
+    /// Returns the current status of the input.
+    ///
+    /// Note that the input needs to be selected as the active input for most fields in this value
+    /// to be valid.
+    #[inline]
     pub fn status(&self) -> InputStatus {
         self.0.status
     }
 
+    /// Returns the capability flags of this input.
+    #[inline]
     pub fn capabilities(&self) -> InputCapabilities {
         self.0.capabilities
     }

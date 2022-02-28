@@ -1,4 +1,4 @@
-//! Image and pixel foDiscreteFrameSize { field1: desc.union.discrete };
+//! Image and pixel formats.
 
 use std::{fmt, mem};
 
@@ -10,6 +10,7 @@ use crate::{byte_array_to_str, raw, BufType, Device, Fract, Result};
 pub use crate::pixelformat::Pixelformat;
 pub use crate::shared::FmtFlags;
 
+/// Formats of all possible buffer types.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Format {
@@ -23,6 +24,8 @@ pub enum Format {
     // TODO...
 }
 
+/// Pixel format of a [`VIDEO_OUTPUT`][BufType::VIDEO_OUTPUT] or
+/// [`VIDEO_CAPTURE`][BufType::VIDEO_CAPTURE] buffer.
 pub struct PixFormat(raw::PixFormat);
 
 pub struct PixFormatMplane(raw::PixFormatMplane);
@@ -31,6 +34,8 @@ pub struct Window(raw::Window);
 
 pub struct PlanePixFormat(raw::PlanePixFormat);
 
+/// Metadata format of a [`META_CAPTURE`][BufType::META_CAPTURE] or
+/// [`META_OUTPUT`][BufType::META_OUTPUT] buffer.
 pub struct MetaFormat(raw::MetaFormat);
 
 impl Format {

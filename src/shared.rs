@@ -24,10 +24,11 @@ ffi_enum! {
 }
 
 ffi_enum! {
+    /// Describes what kind of device an [`Output`][crate::Output] is.
     pub enum OutputType: u32 {
         /// This output is an analog TV modulator.
         MODULATOR = 1,
-        /// Any non-modulator video output, for example Composite Video, S-Video, HDMI.
+        /// Non-modulated analog TV, or a digital signal.
         ANALOG = 2,
         /// The video output will be copied to a video overlay.
         ANALOGVGAOVERLAY = 3,
@@ -35,9 +36,13 @@ ffi_enum! {
 }
 
 ffi_enum! {
+    /// Describes what kind of device an [`Input`][crate::Input] is.
     pub enum InputType: u32 {
+        /// The input is an RF Demodulator/Tuner.
         TUNER = 1,
+        /// Input is a camera, HDMI capture device, or another non-tuner input.
         CAMERA = 2,
+        /// The input is a touch screen or surface.
         TOUCH = 3,
     }
 }
@@ -185,63 +190,21 @@ bitflags! {
 
 bitflags! {
     pub struct FmtFlags: u32 {
-        /// This is a compressed format.
         const COMPRESSED             = 0x0001;
-        /// This format is not native to the device but emulated through software (usually libv4l2),
-        /// where possible try to use a native format instead for better performance.
         const EMULATED               = 0x0002;
-        /// This flag can only be used in combination with the `V4L2_FMT_FLAG_COMPRESSED` flag,
-        /// since this applies to compressed formats only. This flag is valid for stateful decoders
-        /// only.
         const CONTINUOUS_BYTESTREAM  = 0x0004;
-        /// Dynamic resolution switching is supported by the device for this compressed bytestream
-        /// format (aka coded format). It will notify the user via the event
-        /// `V4L2_EVENT_SOURCE_CHANGE` when changes in the video parameters are detected.
-        ///
-        /// This flag can only be used in combination with the `V4L2_FMT_FLAG_COMPRESSED` flag,
-        /// since this applies to compressed formats only. This flag is valid for stateful codecs
-        /// only.
         const DYN_RESOLUTION         = 0x0008;
-        /// The hardware encoder supports setting the CAPTURE coded frame interval separately from
-        /// the OUTPUT raw frame interval. Setting the OUTPUT raw frame interval with VIDIOC_S_PARM
-        /// also sets the CAPTURE coded frame interval to the same value. If this flag is set, then
-        /// the CAPTURE coded frame interval can be set to a different value afterwards. This is
-        /// typically used for offline encoding where the OUTPUT raw frame interval is used as a
-        /// hint for reserving hardware encoder resources and the CAPTURE coded frame interval is
-        /// the actual frame rate embedded in the encoded video stream.
-        ///
-        /// This flag can only be used in combination with the V4L2_FMT_FLAG_COMPRESSED flag, since
-        /// this applies to compressed formats only. This flag is valid for stateful encoders only.
         const ENC_CAP_FRAME_INTERVAL = 0x0010;
-        /// The driver allows the application to try to change the default colorspace. This flag is
-        /// relevant only for capture devices. The application can ask to configure the colorspace
-        /// of the capture device when calling the VIDIOC_S_FMT ioctl with V4L2_PIX_FMT_FLAG_SET_CSC
-        /// set.
         const CSC_COLORSPACE         = 0x0020;
-        /// The driver allows the application to try to change the default transfer function. This
-        /// flag is relevant only for capture devices. The application can ask to configure the
-        /// transfer function of the capture device when calling the VIDIOC_S_FMT ioctl with
-        /// V4L2_PIX_FMT_FLAG_SET_CSC set.
         const CSC_XFER_FUNC          = 0x0040;
-        /// The driver allows the application to try to change the default Y’CbCr encoding. This
-        /// flag is relevant only for capture devices. The application can ask to configure the
-        /// Y’CbCr encoding of the capture device when calling the VIDIOC_S_FMT ioctl with
-        /// V4L2_PIX_FMT_FLAG_SET_CSC set.
         const CSC_YCBCR_ENC          = 0x0080;
-        /// The driver allows the application to try to change the default HSV encoding. This flag
-        /// is relevant only for capture devices. The application can ask to configure the HSV
-        /// encoding of the capture device when calling the VIDIOC_S_FMT ioctl with
-        /// V4L2_PIX_FMT_FLAG_SET_CSC set.
         const CSC_HSV_ENC            = Self::CSC_YCBCR_ENC.bits;
-        /// The driver allows the application to try to change the default quantization. This flag
-        /// is relevant only for capture devices. The application can ask to configure the
-        /// quantization of the capture device when calling the VIDIOC_S_FMT ioctl with
-        /// V4L2_PIX_FMT_FLAG_SET_CSC set.
         const CSC_QUANTIZATION       = 0x0100;
     }
 }
 
 bitflags! {
+    /// Analog video standards.
     pub struct AnalogStd: u64 { // NB: this is v4l2_std_id
         const PAL_B       = 0x0000001;
         const PAL_B1      = 0x0000002;
@@ -278,26 +241,19 @@ bitflags! {
 
 bitflags! {
     pub struct OutputCapabilities: u32 {
-        /// This output supports setting video timings by using VIDIOC_S_DV_TIMINGS.
+        /// The output allows configuring video timings via `VIDIOC_S_DV_TIMINGS`.
         const DV_TIMINGS     = 0x00000002;
         const CUSTOM_TIMINGS = Self::DV_TIMINGS.bits;
-        /// This output supports setting the TV standard by using VIDIOC_S_STD.
         const STD            = 0x00000004;
-        /// This output supports setting the native size using the V4L2_SEL_TGT_NATIVE_SIZE
-        /// selection target, see Common selection definitions.
         const NATIVE_SIZE    = 0x00000008;
     }
 }
 
 bitflags! {
     pub struct InputCapabilities: u32 {
-        /// This input supports setting video timings by using VIDIOC_S_DV_TIMINGS.
         const DV_TIMINGS     = 0x00000002;
         const CUSTOM_TIMINGS = Self::DV_TIMINGS.bits;
-        /// This input supports setting the TV standard by using VIDIOC_S_STD.
         const STD            = 0x00000004;
-        /// This input supports setting the native size using the V4L2_SEL_TGT_NATIVE_SIZE
-        /// selection target, see Common selection definitions.
         const NATIVE_SIZE    = 0x00000008;
     }
 }
@@ -305,88 +261,40 @@ bitflags! {
 bitflags! {
     /// Device capabilities.
     pub struct CapabilityFlags: u32 {
-        /// The device supports the single-planar API through the Video Capture interface.
         const VIDEO_CAPTURE        = 0x00000001;
-        /// The device supports the single-planar API through the Video Output interface.
         const VIDEO_OUTPUT         = 0x00000002;
-        /// The device supports the Video Overlay interface. A video overlay device typically stores
-        /// captured images directly in the video memory of a graphics card, with hardware clipping
-        /// and scaling.
         const VIDEO_OVERLAY        = 0x00000004;
-        /// The device supports the Raw VBI Capture interface, providing Teletext and Closed Caption
-        /// data.
         const VBI_CAPTURE          = 0x00000010;
-        /// The device supports the Raw VBI Output interface.
         const VBI_OUTPUT           = 0x00000020;
-        /// The device supports the Sliced VBI Capture interface.
         const SLICED_VBI_CAPTURE   = 0x00000040;
-        /// The device supports the Sliced VBI Output interface.
         const SLICED_VBI_OUTPUT    = 0x00000080;
-        /// The device supports the Radio Data System capture interface.
         const RDS_CAPTURE          = 0x00000100;
-        /// The device supports the Video Output Overlay (OSD) interface. Unlike the Video Overlay
-        /// interface, this is a secondary function of video output devices and overlays an image
-        /// onto an outgoing video signal. When the driver sets this flag, it must clear the
-        /// `V4L2_CAP_VIDEO_OVERLAY` flag and vice versa.
-        ///
-        /// The struct v4l2_framebuffer lacks an enum v4l2_buf_type field, therefore the type of
-        /// overlay is implied by the driver capabilities.
         const VIDEO_OUTPUT_OVERLAY = 0x00000200;
-        /// The device supports the ioctl VIDIOC_S_HW_FREQ_SEEK ioctl for hardware frequency
-        /// seeking.
         const HW_FREQ_SEEK         = 0x00000400;
-        /// The device supports the RDS output interface.
         const RDS_OUTPUT           = 0x00000800;
 
-        /// The device supports the multi-planar API through the Video Capture interface.
         const VIDEO_CAPTURE_MPLANE = 0x00001000;
-        /// The device supports the multi-planar API through the Video Output interface.
         const VIDEO_OUTPUT_MPLANE  = 0x00002000;
-        /// The device supports the multi-planar API through the Video Memory-To-Memory interface.
         const VIDEO_M2M_MPLANE     = 0x00004000;
-        /// The device supports the single-planar API through the Video Memory-To-Memory interface.
         const VIDEO_M2M            = 0x00008000;
 
-        /// The device has some sort of tuner to receive RF-modulated video signals. For more
-        /// information about tuner programming see Tuners and Modulators.
         const TUNER                = 0x00010000;
-        /// The device has audio inputs or outputs. It may or may not support audio recording or
-        /// playback, in PCM or compressed formats. PCM audio support must be implemented as ALSA or
-        /// OSS interface. For more information on audio inputs and outputs see Audio Inputs and
-        /// Outputs.
         const AUDIO                = 0x00020000;
-        /// This is a radio receiver.
         const RADIO                = 0x00040000;
-        /// The device has some sort of modulator to emit RF-modulated video/audio signals. For more
-        /// information about modulator programming see Tuners and Modulators.
         const MODULATOR            = 0x00080000;
 
-        /// The device supports the SDR Capture interface.
         const SDR_CAPTURE          = 0x00100000;
-        /// The device supports the struct v4l2_pix_format extended fields.
         const EXT_PIX_FORMAT       = 0x00200000;
-        /// The device supports the SDR Output interface.
         const SDR_OUTPUT           = 0x00400000;
-        /// The device supports the Metadata Interface capture interface.
         const META_CAPTURE         = 0x00800000;
 
-        /// The device supports the `read()` and/or `write()` I/O methods.
         const READWRITE            = 0x01000000;
-        /// The device supports the asynchronous I/O methods.
         const ASYNCIO              = 0x02000000;
-        /// The device supports (some of) the streaming I/O methods.
         const STREAMING            = 0x04000000;
-        /// The device supports the Metadata Interface output interface.
         const META_OUTPUT          = 0x08000000;
 
-        /// This is a touch device.
         const TOUCH                = 0x10000000;
-        /// There is only one input and/or output seen from userspace. The whole video topology
-        /// configuration, including which I/O entity is routed to the input/output, is configured
-        /// by userspace via the Media Controller. See Part IV - Media Controller API.
         const IO_MC                = 0x20000000;
-        /// The driver fills the device_caps field. This capability can only appear in the
-        /// capabilities field and never in the device_caps field.
         const DEVICE_CAPS          = 0x80000000;
     }
 }
@@ -526,6 +434,8 @@ impl Fract {
         self.denominator
     }
 
+    /// Returns this fraction as an `f32`.
+    #[inline]
     pub fn as_f32(&self) -> f32 {
         self.numerator as f32 / self.denominator as f32
     }

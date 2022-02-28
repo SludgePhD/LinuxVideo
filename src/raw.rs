@@ -119,6 +119,7 @@ pub struct PixFormat {
     pub sizeimage: u32,
     pub colorspace: Colorspace,
     pub priv_: u32,
+    // Below fields are only valid if `priv_` equals `V4L2_PIX_FMT_PRIV_MAGIC`.
     pub flags: PixFmtFlag,
     pub enc: u32,
     pub quantization: Quantization,

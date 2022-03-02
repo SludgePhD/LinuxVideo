@@ -1,14 +1,16 @@
-//! Device controls.
+//! Device control enumeration and access.
 
 use std::{fmt, mem};
 
 use nix::errno::Errno;
 
+use crate::shared::CONTROL_FLAGS_NEXT_CTRL;
 use crate::{byte_array_to_str, raw, Device, Result};
 
 pub use crate::raw::controls::Cid;
 pub use crate::shared::{ControlFlags, CtrlType};
 
+/// Iterator over the control descriptors of a device.
 pub struct ControlIter<'a> {
     device: &'a Device,
     next_cid: Cid,
@@ -43,7 +45,7 @@ impl Iterator for ControlIter<'_> {
             unsafe {
                 let mut id = self.next_cid.0;
                 if self.use_ctrl_flag_next_ctrl {
-                    id |= ControlFlags::NEXT_CTRL.bits();
+                    id |= CONTROL_FLAGS_NEXT_CTRL;
                 }
                 let mut raw = raw::QueryCtrl {
                     id,
@@ -82,37 +84,48 @@ impl Iterator for ControlIter<'_> {
     }
 }
 
+/// Describes a device control.
 pub struct ControlDesc(raw::QueryCtrl);
 
 impl ControlDesc {
+    /// The control's identifier.
+    #[inline]
     pub fn id(&self) -> Cid {
         Cid(self.0.id)
     }
 
+    /// The user-facing name of this control.
     pub fn name(&self) -> &str {
         byte_array_to_str(&self.0.name)
     }
 
+    /// Returns the type of value this control expects.
+    #[inline]
     pub fn control_type(&self) -> CtrlType {
         self.0.type_
     }
 
+    #[inline]
     pub fn minimum(&self) -> i32 {
         self.0.minimum
     }
 
+    #[inline]
     pub fn maximum(&self) -> i32 {
         self.0.maximum
     }
 
+    #[inline]
     pub fn step(&self) -> i32 {
         self.0.step
     }
 
+    #[inline]
     pub fn default_value(&self) -> i32 {
         self.0.default_value
     }
 
+    #[inline]
     pub fn flags(&self) -> ControlFlags {
         self.0.flags
     }
@@ -185,12 +198,14 @@ impl Iterator for TextMenuIter<'_> {
     }
 }
 
+/// A possible choice for a menu control.
 pub struct TextMenuItem {
     raw: raw::QueryMenu,
 }
 
 impl TextMenuItem {
     /// The item's index. Setting the menu control to this value will choose this item.
+    #[inline]
     pub fn index(&self) -> u32 {
         self.raw.index
     }

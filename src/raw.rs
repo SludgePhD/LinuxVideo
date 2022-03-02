@@ -41,7 +41,7 @@ pub struct FmtDesc {
     /// `V4L2_BUF_TYPE_VIDEO_OVERLAY`, `V4L2_BUF_TYPE_SDR_CAPTURE`, `V4L2_BUF_TYPE_SDR_OUTPUT`,
     /// `V4L2_BUF_TYPE_META_CAPTURE` and `V4L2_BUF_TYPE_META_OUTPUT`. See `v4l2_buf_type`.
     pub type_: BufType,
-    pub flags: FmtFlags,
+    pub flags: FormatFlags,
     /// Description of the format, a NUL-terminated ASCII string. This information is intended for
     /// the user, for example: “YUV 4:2:2”.
     pub description: [u8; 32],

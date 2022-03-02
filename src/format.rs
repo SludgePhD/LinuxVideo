@@ -8,7 +8,7 @@ use crate::shared::{FrmIvalType, FrmSizeType};
 use crate::{byte_array_to_str, raw, BufType, Device, Fract, Result};
 
 pub use crate::pixelformat::Pixelformat;
-pub use crate::shared::FmtFlags;
+pub use crate::shared::FormatFlags;
 
 /// Formats of all possible buffer types.
 #[derive(Debug)]
@@ -258,7 +258,7 @@ impl Iterator for FormatDescIter<'_> {
 pub struct FormatDesc(raw::FmtDesc);
 
 impl FormatDesc {
-    pub fn flags(&self) -> FmtFlags {
+    pub fn flags(&self) -> FormatFlags {
         self.0.flags
     }
 

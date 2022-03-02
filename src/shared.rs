@@ -104,6 +104,7 @@ ffi_enum! {
 }
 
 ffi_enum! {
+    /// Data types supported by a device control.
     pub enum CtrlType: u32 {
         INTEGER             = 1,
         BOOLEAN             = 2,
@@ -129,6 +130,12 @@ ffi_enum! {
         H264_PRED_WEIGHTS   = 0x0205,
 
         FWHT_PARAMS         = 0x0220,
+
+        VP8_FRAME           = 0x0240,
+
+        MPEG2_QUANTISATION  = 0x0250,
+        MPEG2_SEQUENCE      = 0x0251,
+        MPEG2_PICTURE       = 0x0252,
     }
 }
 
@@ -172,24 +179,42 @@ ffi_enum! {
 bitflags! {
     /// Flags describing the state of a device control.
     pub struct ControlFlags: u32 {
+        /// The control is disabled and cannot be modified.
         const DISABLED         = 0x0001;
+        /// The control is in use by another application and cannot be modified.
         const GRABBED          = 0x0002;
+        /// The value of this control cannot be changed.
         const READ_ONLY        = 0x0004;
+        /// Modifying the value of this control may change the value of other controls in the same
+        /// control class.
         const UPDATE           = 0x0008;
+        /// The control is not available in the current device configuration.
         const INACTIVE         = 0x0010;
+        /// The control's value is best displayed as a slider-like control in a UI.
         const SLIDER           = 0x0020;
+        /// The control's value is not readable.
         const WRITE_ONLY       = 0x0040;
+        /// The value of the control may change spuriously, even without writing to it.
         const VOLATILE         = 0x0080;
+        /// The control's value is a non-scalar type behind a pointer.
         const HAS_PAYLOAD      = 0x0100;
+        /// Setting the control's value will propagate to the driver, even when setting it to its
+        /// current value.
+        ///
+        /// This is typically set for "trigger" controls that execute a device action when set.
         const EXECUTE_ON_WRITE = 0x0200;
+        /// Modifying this control's value may change the video buffer layout.
         const MODIFY_LAYOUT    = 0x0400;
 
-        const NEXT_CTRL        = 0x80000000;
+        // Used internally, but not of interest to users of this library.
+        //const NEXT_CTRL        = 0x80000000;
     }
 }
 
+pub(crate) const CONTROL_FLAGS_NEXT_CTRL: u32 = 0x80000000;
+
 bitflags! {
-    pub struct FmtFlags: u32 {
+    pub struct FormatFlags: u32 {
         const COMPRESSED             = 0x0001;
         const EMULATED               = 0x0002;
         const CONTINUOUS_BYTESTREAM  = 0x0004;
@@ -240,6 +265,7 @@ bitflags! {
 }
 
 bitflags! {
+    /// Describes the capabilities of a device [`Output`][crate::Output].
     pub struct OutputCapabilities: u32 {
         /// The output allows configuring video timings via `VIDIOC_S_DV_TIMINGS`.
         const DV_TIMINGS     = 0x00000002;
@@ -250,7 +276,9 @@ bitflags! {
 }
 
 bitflags! {
+    /// Describes the capabilities of a device [`Input`][crate::Input].
     pub struct InputCapabilities: u32 {
+        /// The input allows configuring video timings via `VIDIOC_S_DV_TIMINGS`.
         const DV_TIMINGS     = 0x00000002;
         const CUSTOM_TIMINGS = Self::DV_TIMINGS.bits;
         const STD            = 0x00000004;
@@ -261,7 +289,9 @@ bitflags! {
 bitflags! {
     /// Device capabilities.
     pub struct CapabilityFlags: u32 {
+        /// Device supports capturing video data via [`Device::video_capture`][crate::Device::video_capture].
         const VIDEO_CAPTURE        = 0x00000001;
+        /// Device supports outputting video data via [`Device::video_output`][crate::Device::video_output].
         const VIDEO_OUTPUT         = 0x00000002;
         const VIDEO_OVERLAY        = 0x00000004;
         const VBI_CAPTURE          = 0x00000010;
@@ -286,38 +316,62 @@ bitflags! {
         const SDR_CAPTURE          = 0x00100000;
         const EXT_PIX_FORMAT       = 0x00200000;
         const SDR_OUTPUT           = 0x00400000;
+        /// Device supports capturing metadata via [`Device::meta_capture`][crate::Device::meta_capture].
         const META_CAPTURE         = 0x00800000;
 
+        /// Device supports the read/write based I/O method.
         const READWRITE            = 0x01000000;
+        /// Device supports asynchronous I/O (this is apparently not yet defined or used though).
         const ASYNCIO              = 0x02000000;
+        /// Device supports the buffer-based streaming I/O method.
         const STREAMING            = 0x04000000;
         const META_OUTPUT          = 0x08000000;
 
+        /// Device is a touch input device.
         const TOUCH                = 0x10000000;
+        /// Device uses the Media Controller API for configuration.
         const IO_MC                = 0x20000000;
+        /// Driver supports per-device capabilities.
         const DEVICE_CAPS          = 0x80000000;
     }
 }
 
 bitflags! {
+    /// Bitflags describing the current status of a device [`Input`][crate::Input].
     pub struct InputStatus: u32 {
+        /// Input has no power and is turned off.
         const NO_POWER   = 0x00000001;
+        /// Input is not receiving a video signal.
         const NO_SIGNAL  = 0x00000002;
+        /// The input signal contains no color data.
         const NO_COLOR   = 0x00000004;
 
+        /// The input produces a horizontally flipped image which needs to be corrected in
+        /// userspace.
         const HFLIP      = 0x00000010;
+        /// The input produces a vertically flipped image which needs to be corrected in userspace.
         const VFLIP      = 0x00000020;
 
+        /// Analog Input: Not locked to HSYNC.
         const NO_H_LOCK   = 0x00000100;
+        /// Analog Input: The input's [Color Killer](https://en.wikipedia.org/wiki/Color_killer) circuit is
+        /// active.
         const COLOR_KILL  = 0x00000200;
+        /// Analog Input: Not locked to VSYNC.
         const NO_V_LOCK   = 0x00000400;
+        /// Analog Input: No analog standard lock (when using auto-detection of the format).
         const NO_STD_LOCK = 0x00000800;
 
+        /// Digital Input: Not synced to video data.
         const NO_SYNC     = 0x00010000;
+        /// Digital Input: No equalizer lock.
         const NO_EQU      = 0x00020000;
+        /// Digital Input: No carrier recovered.
         const NO_CARRIER  = 0x00040000;
 
+        /// VCR Input: Macrovision copy protection detected.
         const MACROVISION = 0x01000000;
+        /// Access to the video stream was denied.
         const NO_ACCESS   = 0x02000000;
         const VTR         = 0x04000000;
     }

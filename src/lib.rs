@@ -1,6 +1,9 @@
 //! **Li**nux **Vid**eo device library.
+//!
+//! This library provides a (hopefully) convenient and high-level wrapper around the V4L2 ioctls,
+//! and allows accessing video devices (capture cards, webcams, etc.) on Linux systems.
 
-#![forbid(unaligned_references)] // can't believe this isn't default
+#![forbid(unaligned_references)] // can't believe this isn't at least deny-by-default
 
 #[macro_use]
 mod macros;
@@ -36,7 +39,8 @@ pub use shared::{
     OutputCapabilities, OutputType,
 };
 
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Returns an iterator over all connected V4L2 devices.
 pub fn list() -> Result<impl Iterator<Item = Result<Device>>> {
@@ -321,6 +325,9 @@ impl VideoCaptureDevice {
     /// Requests a change to the frame interval.
     ///
     /// Returns the actual frame interval chosen by the driver.
+    ///
+    /// Supported frame intervals depend on the pixel format and video resolution and can be
+    /// enumerated with [`Device::frame_intervals`].
     pub fn set_frame_interval(&self, interval: Fract) -> Result<Fract> {
         unsafe {
             let mut parm = raw::StreamParm {
@@ -365,12 +372,14 @@ impl Read for VideoCaptureDevice {
     }
 }
 
+/// A video device configured for video output.
 pub struct VideoOutputDevice {
     file: File,
     format: PixFormat,
 }
 
 impl VideoOutputDevice {
+    /// Returns the video format chosen by the driver.
     pub fn format(&self) -> &PixFormat {
         &self.format
     }
@@ -501,6 +510,7 @@ impl fmt::Debug for Capabilities {
     }
 }
 
+/// Iterator over the [`Output`]s of a [`Device`].
 pub struct OutputIter<'a> {
     device: &'a Device,
     next_index: u32,
@@ -538,6 +548,7 @@ impl Iterator for OutputIter<'_> {
     }
 }
 
+/// Iterator over the [`Input`]s of a [`Device`].
 pub struct InputIter<'a> {
     device: &'a Device,
     next_index: u32,

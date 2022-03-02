@@ -4,11 +4,12 @@ use crate::CapabilityFlags;
 
 macro_rules! buf_types {
     (
-        $( $name:ident = $value:literal, )+
+        $( $(#[$($attr:tt)+])* $name:ident = $value:literal, )+
     ) => {
         ffi_enum! {
+            /// A buffer or stream type.
             pub enum BufType: u32 { // more of a "stream type", really
-                $( $name = $value, )+
+                $( $(#[$($attr)+])* $name = $value, )+
             }
         }
 
@@ -19,8 +20,9 @@ macro_rules! buf_types {
         }
 
         bitflags! {
+            /// Bitflags of supported buffer types.
             pub struct BufTypes: u32 {
-                $( const $name = 1 << $value; )+
+                $( $(#[$($attr)+])* const $name = 1 << $value; )+
             }
         }
 
@@ -33,7 +35,9 @@ macro_rules! buf_types {
 }
 
 buf_types! {
+    /// Single-plane video capture.
     VIDEO_CAPTURE = 1,
+    /// Single-plane video output.
     VIDEO_OUTPUT = 2,
     VIDEO_OVERLAY = 3,
     VBI_CAPTURE = 4,
@@ -45,7 +49,9 @@ buf_types! {
     VIDEO_OUTPUT_MPLANE = 10,
     SDR_CAPTURE = 11,
     SDR_OUTPUT = 12,
+    /// Metadata capture.
     META_CAPTURE = 13,
+    /// Metadata output.
     META_OUTPUT = 14,
 }
 
@@ -74,6 +80,7 @@ impl IntoIterator for BufTypes {
     }
 }
 
+/// Iterator over the [`BufType`]s stored in a [`BufTypes`] value.
 pub struct BufTypesIter {
     buf_types: BufTypes,
     index: u32,

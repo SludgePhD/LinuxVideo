@@ -1,7 +1,11 @@
 [package]
 name = "linuxvideo"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
+license = "0BSD"
+description = "V4L2 video capture and output library"
+repository = "https://github.com/SludgePhD/LinuxVideo.git"
+keywords = ["linux", "video", "webcam"]
 
 [dependencies]
 log = "0.4.14"

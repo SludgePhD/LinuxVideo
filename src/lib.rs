@@ -1,4 +1,4 @@
-//! **Li**nux **Vid**eo device library.
+//! Linux video device library.
 //!
 //! This library provides a (hopefully) convenient and high-level wrapper around the V4L2 ioctls,
 //! and allows accessing video devices (capture cards, webcams, etc.) on Linux systems.

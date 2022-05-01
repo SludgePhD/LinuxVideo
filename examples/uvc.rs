@@ -2,13 +2,13 @@
 
 use std::{env, path::Path};
 
-use livid::{
+use linuxvideo::{
     format::{MetaFormat, Pixelformat},
     uvc::UvcMetadata,
     CapabilityFlags, Device,
 };
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);

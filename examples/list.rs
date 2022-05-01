@@ -1,7 +1,7 @@
-use livid::Device;
+use linuxvideo::Device;
 
-fn main() -> livid::Result<()> {
-    for res in livid::list()? {
+fn main() -> linuxvideo::Result<()> {
+    for res in linuxvideo::list()? {
         match res.and_then(|device| list_device(device)) {
             Ok(()) => {}
             Err(e) => {
@@ -13,7 +13,7 @@ fn main() -> livid::Result<()> {
     Ok(())
 }
 
-fn list_device(device: Device) -> livid::Result<()> {
+fn list_device(device: Device) -> linuxvideo::Result<()> {
     let caps = device.capabilities()?;
     println!("- {}: {}", device.path()?.display(), caps.card());
     println!("  driver: {}", caps.driver());

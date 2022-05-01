@@ -1,6 +1,6 @@
 //! Writes test data to a video output device.
 //!
-//! Uses the [`livid::stream::WriteStream`] returned by [`livid::VideoOutputDevice::into_stream`].
+//! Uses the [`linuxvideo::stream::WriteStream`] returned by [`linuxvideo::VideoOutputDevice::into_stream`].
 
 // TODO: does not seem to work with v4l2loopback
 
@@ -13,7 +13,7 @@ use std::{
 };
 
 use itertools::Itertools;
-use livid::{
+use linuxvideo::{
     format::{PixFormat, Pixelformat},
     CapabilityFlags, Device,
 };
@@ -27,7 +27,7 @@ const GREEN: [u8; 4] = [0xff, 0, 0xff, 0];
 const BLUE: [u8; 4] = [0xff, 0, 0, 0xff];
 const TRANSPARENT: [u8; 4] = [0, 0, 0, 0];
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     let mut args = env::args_os().skip(1);
 
     let path = args

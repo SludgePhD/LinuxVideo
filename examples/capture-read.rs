@@ -1,7 +1,7 @@
 //! Captures video and ignores the video data (printing a `.` to the screen for every frame
 //! received).
 //!
-//! Uses the [`std::io::Read`] implementation of [`livid::VideoCaptureDevice`] to capture image
+//! Uses the [`std::io::Read`] implementation of [`linuxvideo::VideoCaptureDevice`] to capture image
 //! data.
 
 use std::{
@@ -11,12 +11,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use livid::{
+use linuxvideo::{
     format::{PixFormat, Pixelformat},
     Device,
 };
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);

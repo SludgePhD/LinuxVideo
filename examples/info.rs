@@ -2,9 +2,9 @@
 
 use std::{env, path::Path};
 
-use livid::{controls::CtrlType, format::FrameSizes, BufType, Device};
+use linuxvideo::{controls::CtrlType, format::FrameSizes, BufType, Device};
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
@@ -18,7 +18,7 @@ fn main() -> livid::Result<()> {
     Ok(())
 }
 
-fn list_device(device: Device) -> livid::Result<()> {
+fn list_device(device: Device) -> linuxvideo::Result<()> {
     let caps = device.capabilities()?;
     println!("card: {}", caps.card());
     println!("driver: {}", caps.driver());

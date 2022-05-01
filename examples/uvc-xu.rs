@@ -2,13 +2,13 @@
 
 use std::{env, path::Path};
 
-use livid::{uvc::UvcExt, Device};
+use linuxvideo::{uvc::UvcExt, Device};
 
 fn usage() -> String {
     format!("usage: uvc-xu <device> <extension unit ID>")
 }
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);

@@ -1,6 +1,6 @@
 //! Writes test data to a video output device.
 //!
-//! Uses the [`std::io::Write`] implementation of [`livid::VideoOutputDevice`].
+//! Uses the [`std::io::Write`] implementation of [`linuxvideo::VideoOutputDevice`].
 
 use std::{
     env,
@@ -11,7 +11,7 @@ use std::{
 };
 
 use itertools::Itertools;
-use livid::{
+use linuxvideo::{
     format::{PixFormat, Pixelformat},
     CapabilityFlags, Device,
 };
@@ -25,7 +25,7 @@ const GREEN: [u8; 4] = [0xff, 0, 0xff, 0];
 const BLUE: [u8; 4] = [0xff, 0, 0, 0xff];
 const TRANSPARENT: [u8; 4] = [0, 0, 0, 0];
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     let mut args = env::args_os().skip(1);
 
     let path = args

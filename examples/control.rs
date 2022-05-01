@@ -1,12 +1,12 @@
 use std::{env, path::Path};
 
-use livid::Device;
+use linuxvideo::Device;
 
 fn usage() -> String {
     format!("usage: control <device> <control> [<value>]")
 }
 
-fn main() -> livid::Result<()> {
+fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);

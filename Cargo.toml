@@ -5,7 +5,7 @@ edition = "2018"
 
 [dependencies]
 log = "0.4.14"
-nix = "0.23.0"
+nix = "0.24.1"
 bitflags = "1.2.1"
 
 [dev-dependencies]

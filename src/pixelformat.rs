@@ -10,8 +10,15 @@ pub struct Pixelformat(u32);
 impl Pixelformat {
     /// `rrrrrrrr gggggggg bbbbbbbb aaaaaaaa`
     pub const RGBA32: Self = fmt(b"AB24");
-    /// `aaaaaaaa rrrrrrrr gggggggg bbbbbbbb`
+
+    /// [DEPRECATED] `aaaaaaaa rrrrrrrr gggggggg bbbbbbbb`
+    ///
+    /// This format is deprecated because the meaning of the alpha channel is ill-defined and its
+    /// interpretation depends on driver and application.
     pub const RGB32: Self = fmt(b"RGB4");
+
+    /// `aaaaaaaa bbbbbbbb gggggggg rrrrrrrr`
+    pub const ABGR32: Self = fmt(b"AR24");
 
     /// Motion JPEG, a sequence of JPEG images with omitted huffman tables.
     ///

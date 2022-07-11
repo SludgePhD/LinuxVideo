@@ -17,7 +17,7 @@ impl Pixelformat {
     /// interpretation depends on driver and application.
     pub const RGB32: Self = fmt(b"RGB4");
 
-    /// `aaaaaaaa bbbbbbbb gggggggg rrrrrrrr`
+    /// `bbbbbbbb gggggggg rrrrrrrr aaaaaaaa`
     pub const ABGR32: Self = fmt(b"AR24");
 
     /// Motion JPEG, a sequence of JPEG images with omitted huffman tables.

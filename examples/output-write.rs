@@ -16,14 +16,14 @@ use linuxvideo::{
     CapabilityFlags, Device,
 };
 
-const WIDTH: u32 = 120;
-const HEIGHT: u32 = 60;
-const PIXFMT: Pixelformat = Pixelformat::RGB32;
+const WIDTH: u32 = 1920;
+const HEIGHT: u32 = 1080;
+const PIXFMT: Pixelformat = Pixelformat::ABGR32;
 
-const RED: [u8; 4] = [0xff, 0xff, 0, 0];
-const GREEN: [u8; 4] = [0xff, 0, 0xff, 0];
+const RED: [u8; 4] = [0, 0, 0xff, 0xff];
+const GREEN: [u8; 4] = [0, 0xff, 0, 0xff];
 const BLUE: [u8; 4] = [0xff, 0, 0, 0xff];
-const TRANSPARENT: [u8; 4] = [0, 0, 0, 0];
+const TRANSPARENT: [u8; 4] = [0, 0xff, 0xff, 120];
 
 fn main() -> linuxvideo::Result<()> {
     let mut args = env::args_os().skip(1);

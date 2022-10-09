@@ -462,7 +462,7 @@ bitflags! {
 }
 
 /// A fractional value (`numerator / denominator`).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash)]
 #[repr(C)]
 pub struct Fract {
     numerator: u32,
@@ -472,6 +472,7 @@ pub struct Fract {
 impl Fract {
     #[inline]
     pub fn new(numerator: u32, denominator: u32) -> Self {
+        assert_ne!(denominator, 0, "denominator must not be zero");
         Self {
             numerator,
             denominator,
@@ -503,6 +504,90 @@ impl fmt::Display for Fract {
 
 impl fmt::Debug for Fract {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl PartialEq for Fract {
+    fn eq(&self, other: &Self) -> bool {
+        let [a, b] = same_denom(*self, *other);
+        a.numerator == b.numerator
+    }
+}
+
+impl Eq for Fract {}
+
+impl PartialOrd for Fract {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let [a, b] = same_denom(*self, *other);
+        a.numerator.partial_cmp(&b.numerator)
+    }
+}
+
+impl Ord for Fract {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let [a, b] = same_denom(*self, *other);
+        a.numerator.cmp(&b.numerator)
+    }
+}
+
+fn same_denom(f1: Fract, f2: Fract) -> [Fract; 2] {
+    let multiple = lcm(f1.denominator, f2.denominator);
+    [
+        Fract::new(f1.numerator * (multiple / f1.denominator), multiple),
+        Fract::new(f2.numerator * (multiple / f2.denominator), multiple),
+    ]
+}
+
+const fn gcd(mut a: u32, mut b: u32) -> u32 {
+    while b > 0 {
+        let t = b;
+        b = a % b;
+        a = t;
+    }
+
+    a
+}
+
+const fn lcm(a: u32, b: u32) -> u32 {
+    a * b / gcd(a, b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gcd() {
+        assert_eq!(gcd(6, 9), 3);
+        assert_eq!(gcd(7, 13), 1);
+        assert_eq!(1920 / gcd(1920, 1080), 16);
+        assert_eq!(1080 / gcd(1920, 1080), 9);
+
+        // degenerate case where one of the arguments is 0 - the other one will be returned
+        assert_eq!(gcd(0, 7), 7);
+        assert_eq!(gcd(7, 0), 7);
+        assert_eq!(gcd(0, 0), 0);
+    }
+
+    #[test]
+    fn test_lcm() {
+        assert_eq!(lcm(1, 1), 1);
+        assert_eq!(lcm(1, 3), 3);
+        assert_eq!(lcm(3, 1), 3);
+
+        assert_eq!(lcm(3, 5), 15);
+        assert_eq!(lcm(5, 3), 15);
+    }
+
+    #[test]
+    fn test_same_denom() {
+        let a = Fract::new(2, 3);
+        let b = Fract::new(3, 5);
+        let [x, y] = same_denom(a, b);
+        assert_eq!(x.numerator, 10);
+        assert_eq!(x.denominator, 15);
+        assert_eq!(y.numerator, 9);
+        assert_eq!(y.denominator, 15);
     }
 }

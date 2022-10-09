@@ -459,6 +459,20 @@ impl FrameIntervals {
             }
         }
     }
+
+    pub fn min(&self) -> Fract {
+        match self {
+            FrameIntervals::Discrete(list) => list.iter().map(|ival| ival.raw).min().unwrap(),
+            FrameIntervals::Stepwise(ivals) | FrameIntervals::Continuous(ivals) => *ivals.min(),
+        }
+    }
+
+    pub fn max(&self) -> Fract {
+        match self {
+            FrameIntervals::Discrete(list) => list.iter().map(|ival| ival.raw).max().unwrap(),
+            FrameIntervals::Stepwise(ivals) | FrameIntervals::Continuous(ivals) => *ivals.max(),
+        }
+    }
 }
 
 impl fmt::Display for FrameIntervals {

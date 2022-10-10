@@ -336,6 +336,34 @@ impl FrameSizes {
             }
         }
     }
+
+    pub fn min_width(&self) -> u32 {
+        match self {
+            FrameSizes::Discrete(sizes) => sizes.iter().map(|size| size.width()).min().unwrap(),
+            FrameSizes::Stepwise(sizes) | FrameSizes::Continuous(sizes) => sizes.min_width(),
+        }
+    }
+
+    pub fn min_height(&self) -> u32 {
+        match self {
+            FrameSizes::Discrete(sizes) => sizes.iter().map(|size| size.height()).min().unwrap(),
+            FrameSizes::Stepwise(sizes) | FrameSizes::Continuous(sizes) => sizes.min_height(),
+        }
+    }
+
+    pub fn max_width(&self) -> u32 {
+        match self {
+            FrameSizes::Discrete(sizes) => sizes.iter().map(|size| size.width()).max().unwrap(),
+            FrameSizes::Stepwise(sizes) | FrameSizes::Continuous(sizes) => sizes.max_width(),
+        }
+    }
+
+    pub fn max_height(&self) -> u32 {
+        match self {
+            FrameSizes::Discrete(sizes) => sizes.iter().map(|size| size.height()).max().unwrap(),
+            FrameSizes::Stepwise(sizes) | FrameSizes::Continuous(sizes) => sizes.max_height(),
+        }
+    }
 }
 
 pub struct StepwiseFrameSizes(raw::FrmSizeStepwise);

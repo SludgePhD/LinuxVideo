@@ -13,7 +13,13 @@ fn main() -> linuxvideo::Result<()> {
 
     let mut args = env::args_os().skip(1);
 
-    let path = args.next().ok_or_else(|| format!("usage: uvc <device>"))?;
+    let path = match args.next() {
+        Some(path) => path,
+        None => {
+            println!("usage: uvc <device>");
+            std::process::exit(1);
+        }
+    };
 
     let device = Device::open(Path::new(&path))?;
 
@@ -22,7 +28,7 @@ fn main() -> linuxvideo::Result<()> {
         .device_capabilities()
         .contains(CapabilityFlags::META_CAPTURE)
     {
-        return Err("device does not support `META_CAPTURE` capability".into());
+        panic!("device does not support `META_CAPTURE` capability");
     }
 
     let meta = device.meta_capture(MetaFormat::new(Pixelformat::UVC))?;

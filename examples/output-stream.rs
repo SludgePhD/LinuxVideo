@@ -30,9 +30,13 @@ const TRANSPARENT: [u8; 4] = [0, 0, 0, 0];
 fn main() -> linuxvideo::Result<()> {
     let mut args = env::args_os().skip(1);
 
-    let path = args
-        .next()
-        .ok_or_else(|| format!("usage: write <device>"))?;
+    let path = match args.next() {
+        Some(path) => path,
+        None => {
+            println!("usage: write <device>");
+            std::process::exit(1);
+        }
+    };
 
     let device = Device::open(Path::new(&path))?;
     if !device
@@ -40,10 +44,7 @@ fn main() -> linuxvideo::Result<()> {
         .device_capabilities()
         .contains(CapabilityFlags::VIDEO_OUTPUT)
     {
-        return Err(format!(
-            "cannot write data: selected device does not support `VIDEO_OUTPUT` capability"
-        )
-        .into());
+        panic!("cannot write data: selected device does not support `VIDEO_OUTPUT` capability");
     }
 
     let output = device.video_output(PixFormat::new(WIDTH, HEIGHT, PIXFMT))?;
@@ -51,7 +52,7 @@ fn main() -> linuxvideo::Result<()> {
     println!("set format: {:?}", fmt);
 
     if fmt.pixelformat() != PIXFMT {
-        return Err(format!("driver does not support the requested parameters").into());
+        panic!("driver does not support the requested parameters");
     }
 
     let mut image = (0..fmt.height())

@@ -15,13 +15,14 @@ fn main() -> linuxvideo::Result<()> {
 
     let mut args = env::args_os().skip(1);
 
-    let device = args
-        .next()
-        .ok_or_else(|| format!("usage: save-stream <device> <file>"))?;
+    let (device, file_path) = match (args.next(), args.next()) {
+        (Some(device), Some(file_path)) => (device, file_path),
+        _ => {
+            println!("usage: save-stream <device> <file>");
+            std::process::exit(1);
+        }
+    };
 
-    let file_path = args
-        .next()
-        .ok_or_else(|| format!("usage: save-stream <device> <file>"))?;
     let mut file = File::create(file_path)?;
 
     let device = Device::open(Path::new(&device))?;

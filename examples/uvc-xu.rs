@@ -4,21 +4,23 @@ use std::{env, path::Path};
 
 use linuxvideo::{uvc::UvcExt, Device};
 
-fn usage() -> String {
-    format!("usage: uvc-xu <device> <extension unit ID>")
-}
-
 fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
 
-    let path = args.next().ok_or_else(usage)?;
-    let unit_id = args.next().ok_or_else(usage)?;
+    let (path, unit_id) = match (args.next(), args.next()) {
+        (Some(path), Some(unit_id)) => (path, unit_id),
+        _ => {
+            println!("usage: uvc-xu <device> <extension unit ID>");
+            std::process::exit(1);
+        }
+    };
+
     let unit_id: u8 = unit_id
         .to_str()
-        .ok_or_else(|| format!("unit ID must be an integer"))?
-        .parse()?;
+        .and_then(|id| id.parse().ok())
+        .expect("unit ID must be an integer");
 
     let device = Device::open(Path::new(&path))?;
 

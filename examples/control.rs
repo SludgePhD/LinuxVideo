@@ -2,22 +2,22 @@ use std::{env, path::Path};
 
 use linuxvideo::Device;
 
-fn usage() -> String {
-    format!("usage: control <device> <control> [<value>]")
-}
-
 fn main() -> linuxvideo::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
 
-    let path = args.next().ok_or_else(usage)?;
+    let path = match args.next() {
+        Some(path) => path,
+        None => {
+            println!("usage: control <device> <control> [<value>]");
+            std::process::exit(1);
+        }
+    };
+
     let control_name = args.next();
     let control_name = match control_name.as_ref() {
-        Some(name) => Some(
-            name.to_str()
-                .ok_or_else(|| format!("control name must be UTF-8"))?,
-        ),
+        Some(name) => Some(name.to_str().expect("control name must be UTF-8")),
         None => None,
     };
     let value = args.next();
@@ -25,8 +25,8 @@ fn main() -> linuxvideo::Result<()> {
         Some(value) => Some(
             value
                 .to_str()
-                .ok_or_else(|| format!("control name must be UTF-8"))?
-                .parse()?,
+                .and_then(|id| id.parse().ok())
+                .expect("control name must be UTF-8"),
         ),
         None => None,
     };
@@ -72,7 +72,7 @@ fn main() -> linuxvideo::Result<()> {
                 println!("{:?} control value: {}", cid, value);
             }
         },
-        None => return Err(format!("device does not have control named {}", control_name).into()),
+        None => panic!("device does not have control named {}", control_name),
     }
 
     Ok(())

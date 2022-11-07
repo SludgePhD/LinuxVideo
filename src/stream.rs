@@ -12,7 +12,7 @@ use nix::sys::mman::{mmap, munmap, MapFlags, ProtFlags};
 
 use crate::buf_type::BufType;
 use crate::shared::{BufFlag, Memory};
-use crate::{raw, Result};
+use crate::{raw, Error, Result};
 
 enum AllocType {
     /// The buffer was `mmap`ped into our address space, use `munmap` to free it.
@@ -55,11 +55,10 @@ impl Buffers {
         log::debug!("{:?}", req_bufs);
 
         if req_bufs.count < buffer_count {
-            return Err(format!(
-                "failed to allocate {} buffers (driver only allocated {})",
-                buffer_count, req_bufs.count
-            )
-            .into());
+            return Err(Error::BufferAllocationFailed {
+                required_count: buffer_count,
+                actual_count: req_bufs.count,
+            });
         }
 
         // Query the buffer locations and map them into our process.

@@ -21,9 +21,13 @@ fn main() -> linuxvideo::Result<()> {
 
     let mut args = env::args_os().skip(1);
 
-    let path = args
-        .next()
-        .ok_or_else(|| format!("usage: drain-read <device>"))?;
+    let path = match args.next() {
+        Some(path) => path,
+        None => {
+            println!("usage: drain-read <device>");
+            std::process::exit(1);
+        }
+    };
 
     let device = Device::open(Path::new(&path))?;
 

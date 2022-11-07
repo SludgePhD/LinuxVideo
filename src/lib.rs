@@ -9,6 +9,7 @@
 mod macros;
 mod buf_type;
 pub mod controls;
+mod error;
 pub mod format;
 mod pixelformat;
 mod raw;

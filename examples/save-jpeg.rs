@@ -5,23 +5,24 @@
 
 use std::{env, fs::File, io::Write, path::Path};
 
+use anyhow::anyhow;
 use linuxvideo::{
     format::{PixFormat, Pixelformat},
     Device,
 };
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
 
     let device = args
         .next()
-        .ok_or_else(|| format!("usage: save-stream <device> <file>"))?;
+        .ok_or_else(|| anyhow!("usage: save-stream <device> <file>"))?;
 
     let file_path = args
         .next()
-        .ok_or_else(|| format!("usage: save-stream <device> <file>"))?;
+        .ok_or_else(|| anyhow!("usage: save-stream <device> <file>"))?;
     let mut file = File::create(file_path)?;
 
     let device = Device::open(Path::new(&device))?;

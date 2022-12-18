@@ -2,13 +2,14 @@
 
 use std::{env, path::Path};
 
+use anyhow::anyhow;
 use linuxvideo::{uvc::UvcExt, Device};
 
-fn usage() -> String {
-    format!("usage: uvc-xu <device> <extension unit ID>")
+fn usage() -> anyhow::Error {
+    anyhow!("usage: uvc-xu <device> <extension unit ID>")
 }
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
@@ -17,7 +18,7 @@ fn main() -> linuxvideo::Result<()> {
     let unit_id = args.next().ok_or_else(usage)?;
     let unit_id: u8 = unit_id
         .to_str()
-        .ok_or_else(|| format!("unit ID must be an integer"))?
+        .ok_or_else(|| anyhow!("unit ID must be an integer"))?
         .parse()?;
 
     let device = Device::open(Path::new(&path))?;

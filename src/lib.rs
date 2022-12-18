@@ -21,7 +21,7 @@ use pixelformat::Pixelformat;
 use std::{
     fmt,
     fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    io::{self, Read, Write},
     mem::{self, MaybeUninit},
     os::unix::prelude::*,
     path::{Path, PathBuf},
@@ -31,7 +31,7 @@ use controls::{ControlDesc, ControlIter, TextMenuIter};
 use format::{Format, FormatDescIter, FrameIntervals, FrameSizes, MetaFormat, PixFormat};
 use raw::controls::Cid;
 use shared::{CaptureParamFlags, Memory, StreamParamCaps};
-use stream::{ReadStream, WriteStream};
+use stream::{ReadStream, WriteStream, DEFAULT_BUFFER_COUNT};
 
 pub use buf_type::*;
 pub use shared::{
@@ -39,11 +39,8 @@ pub use shared::{
     OutputCapabilities, OutputType,
 };
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Result<T> = std::result::Result<T, Error>;
-
 /// Returns an iterator over all connected V4L2 devices.
-pub fn list() -> Result<impl Iterator<Item = Result<Device>>> {
+pub fn list() -> io::Result<impl Iterator<Item = io::Result<Device>>> {
     Ok(fs::read_dir("/dev")?.flat_map(|file| {
         let file = match file {
             Ok(file) => file,
@@ -88,7 +85,7 @@ impl Device {
     /// Opens a V4L2 device file from the given path.
     ///
     /// If the path does not refer to a V4L2 device node, an error will be returned.
-    pub fn open(path: &Path) -> Result<Self> {
+    pub fn open(path: &Path) -> io::Result<Self> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
         let mut this = Self {
             file,
@@ -105,11 +102,11 @@ impl Device {
     }
 
     /// Returns the path to the V4L2 device.
-    pub fn path(&self) -> Result<PathBuf> {
+    pub fn path(&self) -> io::Result<PathBuf> {
         Ok(fs::read_link(format!("/proc/self/fd/{}", self.fd()))?)
     }
 
-    pub fn capabilities(&self) -> Result<Capabilities> {
+    pub fn capabilities(&self) -> io::Result<Capabilities> {
         unsafe {
             let mut caps = MaybeUninit::uninit();
             let res = raw::querycap(self.fd(), caps.as_mut_ptr())?;
@@ -137,7 +134,7 @@ impl Device {
     ///
     /// An `ENOTTY` error will be returned if `pixel_format` specifies a format that does not
     /// describe video data (for example, [`Pixelformat::UVC`] or other metadata formats).
-    pub fn frame_sizes(&self, pixel_format: Pixelformat) -> Result<FrameSizes> {
+    pub fn frame_sizes(&self, pixel_format: Pixelformat) -> io::Result<FrameSizes> {
         FrameSizes::new(self, pixel_format)
     }
 
@@ -146,7 +143,7 @@ impl Device {
         pixel_format: Pixelformat,
         width: u32,
         height: u32,
-    ) -> Result<FrameIntervals> {
+    ) -> io::Result<FrameIntervals> {
         FrameIntervals::new(self, pixel_format, width, height)
     }
 
@@ -175,7 +172,7 @@ impl Device {
         TextMenuIter::new(self, ctrl)
     }
 
-    pub fn read_control_raw(&self, cid: Cid) -> Result<i32> {
+    pub fn read_control_raw(&self, cid: Cid) -> io::Result<i32> {
         let mut control = raw::controls::Control { id: cid, value: 0 };
 
         unsafe {
@@ -185,7 +182,7 @@ impl Device {
         Ok(control.value)
     }
 
-    pub fn write_control_raw(&mut self, cid: Cid, value: i32) -> Result<()> {
+    pub fn write_control_raw(&mut self, cid: Cid, value: i32) -> io::Result<()> {
         let mut control = raw::controls::Control { id: cid, value };
         unsafe {
             raw::s_ctrl(self.fd(), &mut control)?;
@@ -195,10 +192,15 @@ impl Device {
 
     /// Reads the stream format in use by `buf_type`.
     ///
-    /// The returned `Format` variant will match `buf_type`.
+    /// The returned [`Format`] variant will match `buf_type`.
     ///
     /// If no format is set, this returns `EINVAL`.
-    pub fn format(&self, buf_type: BufType) -> Result<Format> {
+    ///
+    /// # Panics
+    ///
+    /// This will panic if `buf_type` corresponds to a buffer type that hasn't yet been implemented
+    /// in [`Format`].
+    pub fn format(&self, buf_type: BufType) -> io::Result<Format> {
         unsafe {
             let mut format = raw::Format {
                 type_: buf_type,
@@ -206,7 +208,7 @@ impl Device {
             };
             raw::g_fmt(self.fd(), &mut format)?;
             let fmt = Format::from_raw(format)
-                .ok_or_else(|| format!("unsupported buffer type {:?}", buf_type))?;
+                .unwrap_or_else(|| todo!("unsupported buffer type {:?}", buf_type));
             Ok(fmt)
         }
     }
@@ -215,7 +217,7 @@ impl Device {
     ///
     /// The driver will adjust the values in `format` to the closest values it supports (the variant
     /// will not be changed). The modified `Format` is returned.
-    fn set_format_raw(&mut self, format: Format) -> Result<Format> {
+    fn set_format_raw(&mut self, format: Format) -> io::Result<Format> {
         unsafe {
             let mut raw_format: raw::Format = mem::zeroed();
             match format {
@@ -262,7 +264,7 @@ impl Device {
     /// the requested dimensions and the [`Pixelformat`], if the provided value is not supported.
     /// However, it is not required to do so and may instead return `EINVAL` if the parameters are
     /// not supported. One example where this happens is with `v4l2loopback`.
-    pub fn video_capture(mut self, format: PixFormat) -> Result<VideoCaptureDevice> {
+    pub fn video_capture(mut self, format: PixFormat) -> io::Result<VideoCaptureDevice> {
         let format = match self.set_format_raw(Format::VideoCapture(format))? {
             Format::VideoCapture(fmt) => fmt,
             _ => unreachable!(),
@@ -282,7 +284,7 @@ impl Device {
     /// the requested dimensions and the [`Pixelformat`], if the provided value is not supported.
     /// However, it is not required to do so and may instead return `EINVAL` if the parameters are
     /// not supported. One example where this happens is with `v4l2loopback`.
-    pub fn video_output(mut self, format: PixFormat) -> Result<VideoOutputDevice> {
+    pub fn video_output(mut self, format: PixFormat) -> io::Result<VideoOutputDevice> {
         let format = match self.set_format_raw(Format::VideoOutput(format))? {
             Format::VideoOutput(fmt) => fmt,
             _ => unreachable!(),
@@ -295,7 +297,7 @@ impl Device {
     }
 
     /// Puts the device into metadata capture mode and negotiates a data format.
-    pub fn meta_capture(mut self, format: MetaFormat) -> Result<MetaCaptureDevice> {
+    pub fn meta_capture(mut self, format: MetaFormat) -> io::Result<MetaCaptureDevice> {
         let format = match self.set_format_raw(Format::MetaCapture(format))? {
             Format::MetaCapture(fmt) => fmt,
             _ => unreachable!(),
@@ -328,7 +330,7 @@ impl VideoCaptureDevice {
     ///
     /// Supported frame intervals depend on the pixel format and video resolution and can be
     /// enumerated with [`Device::frame_intervals`].
-    pub fn set_frame_interval(&self, interval: Fract) -> Result<Fract> {
+    pub fn set_frame_interval(&self, interval: Fract) -> io::Result<Fract> {
         unsafe {
             let mut parm = raw::StreamParm {
                 type_: BufType::VIDEO_CAPTURE,
@@ -352,7 +354,7 @@ impl VideoCaptureDevice {
     ///
     /// Note that some drivers may fail to allocate even low buffer counts. For example v4l2loopback
     /// seems to be limited to 2 buffers.
-    pub fn into_stream(self, buffer_count: u32) -> Result<ReadStream> {
+    pub fn into_stream(self, buffer_count: u32) -> io::Result<ReadStream> {
         Ok(ReadStream::new(
             self.file,
             BufType::VIDEO_CAPTURE,
@@ -367,7 +369,7 @@ impl VideoCaptureDevice {
 /// This will only succeed if the device advertises the `READWRITE` capability, otherwise an
 /// error will be returned and you have to use the streaming API instead.
 impl Read for VideoCaptureDevice {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.file.read(buf)
     }
 }
@@ -384,16 +386,13 @@ impl VideoOutputDevice {
         &self.format
     }
 
-    /// Initializes streaming I/O mode with the given number of buffers.
-    ///
-    /// Note that some drivers may fail to allocate even low buffer counts. For example v4l2loopback
-    /// seems to be limited to 2 buffers.
-    pub fn into_stream(self, buffer_count: u32) -> Result<WriteStream> {
+    /// Initializes streaming I/O mode.
+    pub fn into_stream(self) -> io::Result<WriteStream> {
         Ok(WriteStream::new(
             self.file,
             BufType::VIDEO_CAPTURE,
             Memory::MMAP,
-            buffer_count,
+            DEFAULT_BUFFER_COUNT,
         )?)
     }
 }
@@ -406,11 +405,11 @@ impl VideoOutputDevice {
 /// Note that some applications, like guvcview, do not support the read/write methods, so using this
 /// on a v4l2loopback device will not work with such applications.
 impl Write for VideoOutputDevice {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.file.write(buf)
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         self.file.flush()
     }
 }
@@ -427,13 +426,13 @@ impl MetaCaptureDevice {
         &self.format
     }
 
-    /// Initializes streaming I/O mode with the given number of buffers.
-    pub fn into_stream(self, buffer_count: u32) -> Result<ReadStream> {
+    /// Initializes streaming I/O mode.
+    pub fn into_stream(self) -> io::Result<ReadStream> {
         Ok(ReadStream::new(
             self.file,
             BufType::META_CAPTURE,
             Memory::MMAP,
-            buffer_count,
+            DEFAULT_BUFFER_COUNT,
         )?)
     }
 }
@@ -443,7 +442,7 @@ impl MetaCaptureDevice {
 /// This will only succeed if the device advertises the `READWRITE` capability, otherwise an
 /// error will be returned and you have to use the streaming API instead.
 impl Read for MetaCaptureDevice {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.file.read(buf)
     }
 }
@@ -518,7 +517,7 @@ pub struct OutputIter<'a> {
 }
 
 impl Iterator for OutputIter<'_> {
-    type Item = Result<Output>;
+    type Item = io::Result<Output>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -556,7 +555,7 @@ pub struct InputIter<'a> {
 }
 
 impl Iterator for InputIter<'_> {
-    type Item = Result<Input>;
+    type Item = io::Result<Input>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {

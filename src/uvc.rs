@@ -3,13 +3,13 @@
 mod raw;
 
 use std::{
-    mem,
+    io, mem,
     os::unix::prelude::{AsRawFd, RawFd},
 };
 
 use bitflags::bitflags;
 
-use crate::{Device, Result};
+use crate::Device;
 
 use self::raw::{XuControlQuery, XuQuery};
 
@@ -92,7 +92,7 @@ impl<'a> ExtensionUnit<'a> {
         self.device.file.as_raw_fd()
     }
 
-    pub fn control_info(&self, selector: u8) -> Result<ControlInfo> {
+    pub fn control_info(&self, selector: u8) -> io::Result<ControlInfo> {
         let mut info = 0;
         let mut query = XuControlQuery {
             unit: self.unit_id,

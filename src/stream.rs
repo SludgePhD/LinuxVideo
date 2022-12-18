@@ -5,14 +5,14 @@ use std::fs::File;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_int;
 use std::os::unix::prelude::{AsRawFd, RawFd};
-use std::slice;
+use std::{io, slice};
 use std::{mem, ptr};
 
 use nix::sys::mman::{mmap, munmap, MapFlags, ProtFlags};
 
 use crate::buf_type::BufType;
+use crate::raw;
 use crate::shared::{BufFlag, Memory};
-use crate::{raw, Result};
 
 enum AllocType {
     /// The buffer was `mmap`ped into our address space, use `munmap` to free it.
@@ -36,8 +36,16 @@ struct Buffers {
 
 unsafe impl Send for Buffers {}
 
+/// Number of buffers we request by default.
+pub(super) const DEFAULT_BUFFER_COUNT: u32 = 2;
+
 impl Buffers {
-    fn allocate(fd: c_int, buf_type: BufType, mem_type: Memory, buffer_count: u32) -> Result<Self> {
+    fn allocate(
+        fd: c_int,
+        buf_type: BufType,
+        mem_type: Memory,
+        mut buffer_count: u32,
+    ) -> io::Result<Self> {
         let alloc_type = match mem_type {
             Memory::MMAP => AllocType::Mmap,
             _ => unimplemented!("only `mmap` memory type is currently supported"),
@@ -55,11 +63,8 @@ impl Buffers {
         log::debug!("{:?}", req_bufs);
 
         if req_bufs.count < buffer_count {
-            return Err(format!(
-                "failed to allocate {} buffers (driver only allocated {})",
-                buffer_count, req_bufs.count
-            )
-            .into());
+            log::trace!("failed to allocate {buffer_count} buffers (driver only allocated {0}), using {0} instead", req_bufs.count);
+            buffer_count = req_bufs.count;
         }
 
         // Query the buffer locations and map them into our process.
@@ -130,7 +135,7 @@ impl ReadStream {
         buf_type: BufType,
         mem_type: Memory,
         buffer_count: u32,
-    ) -> Result<Self> {
+    ) -> io::Result<Self> {
         let fd = file.as_raw_fd();
         let buffers = Buffers::allocate(fd, buf_type, mem_type, buffer_count)?;
 
@@ -146,7 +151,7 @@ impl ReadStream {
         Ok(this)
     }
 
-    fn enqueue(&mut self, index: u32) -> Result<()> {
+    fn enqueue(&mut self, index: u32) -> io::Result<()> {
         let mut buf: raw::Buffer = unsafe { mem::zeroed() };
         buf.type_ = self.buf_type;
         buf.memory = self.mem_type;
@@ -161,7 +166,7 @@ impl ReadStream {
         Ok(())
     }
 
-    fn enqueue_all(&mut self) -> Result<()> {
+    fn enqueue_all(&mut self) -> io::Result<()> {
         for i in 0..self.buffers.buffers.len() {
             if !self.buffers.buffers[i].queued {
                 self.enqueue(i as u32)?;
@@ -173,7 +178,7 @@ impl ReadStream {
     /// Starts streaming.
     ///
     /// This function can potentially block for a noticeable amount of time.
-    fn stream_on(&mut self) -> Result<()> {
+    fn stream_on(&mut self) -> io::Result<()> {
         unsafe {
             raw::streamon(self.file.as_raw_fd(), &self.buf_type)?;
         }
@@ -182,7 +187,7 @@ impl ReadStream {
     }
 
     // XXX to publicly expose this, we have to handle the fact that it dequeues all buffers
-    fn stream_off(&mut self) -> Result<()> {
+    fn stream_off(&mut self) -> io::Result<()> {
         unsafe {
             raw::streamoff(self.file.as_raw_fd(), &self.buf_type)?;
         }
@@ -199,7 +204,10 @@ impl ReadStream {
     /// If `cb` returns an error, this function will still try to enqueue the buffer again. If that
     /// fails, the error that occurred during enqueuing will be returned, if it succeeds, the error
     /// returned by `cb` will be returned.
-    pub fn dequeue<T>(&mut self, cb: impl FnOnce(ReadBufferView<'_>) -> Result<T>) -> Result<T> {
+    pub fn dequeue<T>(
+        &mut self,
+        cb: impl FnOnce(ReadBufferView<'_>) -> io::Result<T>,
+    ) -> io::Result<T> {
         let mut buf: raw::Buffer = unsafe { mem::zeroed() };
         buf.type_ = self.buf_type;
         buf.memory = self.mem_type;
@@ -283,7 +291,7 @@ impl WriteStream {
         buf_type: BufType,
         mem_type: Memory,
         buffer_count: u32,
-    ) -> Result<Self> {
+    ) -> io::Result<Self> {
         let fd = file.as_raw_fd();
         let buffers = Buffers::allocate(fd, buf_type, mem_type, buffer_count)?;
 
@@ -296,7 +304,7 @@ impl WriteStream {
         })
     }
 
-    fn enqueue_buffer(&mut self, index: u32) -> Result<()> {
+    fn enqueue_buffer(&mut self, index: u32) -> io::Result<()> {
         let mut buf: raw::Buffer = unsafe { mem::zeroed() };
         buf.type_ = self.buf_type;
         buf.memory = self.mem_type;
@@ -315,7 +323,10 @@ impl WriteStream {
     ///
     /// If no unqueued buffer is available, one is dequeued first (which may block until one is
     /// available).
-    pub fn enqueue<T>(&mut self, cb: impl FnOnce(WriteBufferView<'_>) -> Result<T>) -> Result<T> {
+    pub fn enqueue<T>(
+        &mut self,
+        cb: impl FnOnce(WriteBufferView<'_>) -> io::Result<T>,
+    ) -> io::Result<T> {
         let buf_index = match self.next_unqueued_buffer {
             Some(i) => i,
             None => {

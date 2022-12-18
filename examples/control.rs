@@ -1,12 +1,13 @@
 use std::{env, path::Path};
 
+use anyhow::{anyhow, bail};
 use linuxvideo::Device;
 
-fn usage() -> String {
-    format!("usage: control <device> <control> [<value>]")
+fn usage() -> anyhow::Error {
+    anyhow!("usage: control <device> <control> [<value>]")
 }
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
@@ -16,7 +17,7 @@ fn main() -> linuxvideo::Result<()> {
     let control_name = match control_name.as_ref() {
         Some(name) => Some(
             name.to_str()
-                .ok_or_else(|| format!("control name must be UTF-8"))?,
+                .ok_or_else(|| anyhow!("control name must be UTF-8"))?,
         ),
         None => None,
     };
@@ -25,7 +26,7 @@ fn main() -> linuxvideo::Result<()> {
         Some(value) => Some(
             value
                 .to_str()
-                .ok_or_else(|| format!("control name must be UTF-8"))?
+                .ok_or_else(|| anyhow!("control name must be UTF-8"))?
                 .parse()?,
         ),
         None => None,
@@ -72,7 +73,7 @@ fn main() -> linuxvideo::Result<()> {
                 println!("{:?} control value: {}", cid, value);
             }
         },
-        None => return Err(format!("device does not have control named {}", control_name).into()),
+        None => bail!("device does not have control named {control_name}"),
     }
 
     Ok(())

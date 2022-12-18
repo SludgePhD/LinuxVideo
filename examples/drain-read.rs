@@ -11,19 +11,20 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::anyhow;
 use linuxvideo::{
     format::{PixFormat, Pixelformat},
     Device,
 };
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
 
     let path = args
         .next()
-        .ok_or_else(|| format!("usage: drain-read <device>"))?;
+        .ok_or_else(|| anyhow!("usage: drain-read <device>"))?;
 
     let device = Device::open(Path::new(&path))?;
 

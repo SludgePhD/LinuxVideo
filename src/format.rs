@@ -1,11 +1,11 @@
 //! Image and pixel formats.
 
-use std::{fmt, mem};
+use std::{fmt, io, mem};
 
 use nix::errno::Errno;
 
 use crate::shared::{FrmIvalType, FrmSizeType};
-use crate::{byte_array_to_str, raw, BufType, Device, Fract, Result};
+use crate::{byte_array_to_str, raw, BufType, Device, Fract};
 
 pub use crate::pixelformat::Pixelformat;
 pub use crate::shared::FormatFlags;
@@ -223,7 +223,7 @@ impl<'a> FormatDescIter<'a> {
 }
 
 impl Iterator for FormatDescIter<'_> {
-    type Item = Result<FormatDesc>;
+    type Item = io::Result<FormatDesc>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -290,7 +290,7 @@ pub enum FrameSizes {
 }
 
 impl FrameSizes {
-    pub(crate) fn new(device: &Device, pixel_format: Pixelformat) -> Result<Self> {
+    pub(crate) fn new(device: &Device, pixel_format: Pixelformat) -> io::Result<Self> {
         unsafe {
             let mut desc = raw::FrmSizeEnum {
                 index: 0,
@@ -425,7 +425,7 @@ impl FrameIntervals {
         pixel_format: Pixelformat,
         width: u32,
         height: u32,
-    ) -> Result<Self> {
+    ) -> io::Result<Self> {
         unsafe {
             let mut desc = raw::FrmIvalEnum {
                 index: 0,

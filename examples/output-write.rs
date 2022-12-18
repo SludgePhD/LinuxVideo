@@ -10,6 +10,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::{anyhow, bail};
 use itertools::Itertools;
 use linuxvideo::{
     format::{PixFormat, Pixelformat},
@@ -25,12 +26,12 @@ const GREEN: [u8; 4] = [0, 0xff, 0, 0xff];
 const BLUE: [u8; 4] = [0xff, 0, 0, 0xff];
 const TRANSPARENT: [u8; 4] = [0, 0xff, 0xff, 120];
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     let mut args = env::args_os().skip(1);
 
     let path = args
         .next()
-        .ok_or_else(|| format!("usage: write <device>"))?;
+        .ok_or_else(|| anyhow!("usage: write <device>"))?;
 
     let device = Device::open(Path::new(&path))?;
     if !device
@@ -38,10 +39,7 @@ fn main() -> linuxvideo::Result<()> {
         .device_capabilities()
         .contains(CapabilityFlags::VIDEO_OUTPUT)
     {
-        return Err(format!(
-            "cannot write data: selected device does not support `VIDEO_OUTPUT` capability"
-        )
-        .into());
+        bail!("cannot write data: selected device does not support `VIDEO_OUTPUT` capability");
     }
 
     let mut output = device.video_output(PixFormat::new(WIDTH, HEIGHT, PIXFMT))?;
@@ -49,7 +47,7 @@ fn main() -> linuxvideo::Result<()> {
     println!("set format: {:?}", fmt);
 
     if fmt.pixelformat() != PIXFMT {
-        return Err(format!("driver does not support the requested parameters").into());
+        bail!("driver does not support the requested parameters");
     }
 
     let mut image = (0..fmt.height())

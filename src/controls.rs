@@ -1,11 +1,11 @@
 //! Device control enumeration and access.
 
-use std::{fmt, mem};
+use std::{fmt, io, mem};
 
 use nix::errno::Errno;
 
 use crate::shared::CONTROL_FLAGS_NEXT_CTRL;
-use crate::{byte_array_to_str, raw, Device, Result};
+use crate::{byte_array_to_str, raw, Device};
 
 pub use crate::raw::controls::Cid;
 pub use crate::shared::{ControlFlags, CtrlType};
@@ -30,7 +30,7 @@ impl<'a> ControlIter<'a> {
 }
 
 impl Iterator for ControlIter<'_> {
-    type Item = Result<ControlDesc>;
+    type Item = io::Result<ControlDesc>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -172,7 +172,7 @@ impl<'a> TextMenuIter<'a> {
 }
 
 impl Iterator for TextMenuIter<'_> {
-    type Item = Result<TextMenuItem>;
+    type Item = io::Result<TextMenuItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.next_index > self.max_index {

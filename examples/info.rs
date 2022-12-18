@@ -1,15 +1,16 @@
 //! Prints detailed device information.
 
-use std::{env, path::Path};
+use std::{env, io, path::Path};
 
+use anyhow::anyhow;
 use linuxvideo::{controls::CtrlType, format::FrameSizes, BufType, Device};
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
 
-    let path = args.next().ok_or_else(|| format!("usage: info <device>"))?;
+    let path = args.next().ok_or_else(|| anyhow!("usage: info <device>"))?;
 
     let device = Device::open(Path::new(&path))?;
 
@@ -18,7 +19,7 @@ fn main() -> linuxvideo::Result<()> {
     Ok(())
 }
 
-fn list_device(device: Device) -> linuxvideo::Result<()> {
+fn list_device(device: Device) -> io::Result<()> {
     let caps = device.capabilities()?;
     println!("card: {}", caps.card());
     println!("driver: {}", caps.driver());

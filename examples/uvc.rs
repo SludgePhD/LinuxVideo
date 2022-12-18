@@ -2,18 +2,19 @@
 
 use std::{env, path::Path};
 
+use anyhow::{anyhow, bail};
 use linuxvideo::{
     format::{MetaFormat, Pixelformat},
     uvc::UvcMetadata,
     CapabilityFlags, Device,
 };
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let mut args = env::args_os().skip(1);
 
-    let path = args.next().ok_or_else(|| format!("usage: uvc <device>"))?;
+    let path = args.next().ok_or_else(|| anyhow!("usage: uvc <device>"))?;
 
     let device = Device::open(Path::new(&path))?;
 
@@ -22,12 +23,12 @@ fn main() -> linuxvideo::Result<()> {
         .device_capabilities()
         .contains(CapabilityFlags::META_CAPTURE)
     {
-        return Err("device does not support `META_CAPTURE` capability".into());
+        bail!("device does not support `META_CAPTURE` capability");
     }
 
     let meta = device.meta_capture(MetaFormat::new(Pixelformat::UVC))?;
 
-    let mut stream = meta.into_stream(4)?;
+    let mut stream = meta.into_stream()?;
 
     println!("stream started, waiting for data");
     loop {

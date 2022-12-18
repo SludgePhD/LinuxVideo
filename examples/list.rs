@@ -1,6 +1,8 @@
+use std::io;
+
 use linuxvideo::Device;
 
-fn main() -> linuxvideo::Result<()> {
+fn main() -> io::Result<()> {
     for res in linuxvideo::list()? {
         match res.and_then(|device| list_device(device)) {
             Ok(()) => {}
@@ -13,7 +15,7 @@ fn main() -> linuxvideo::Result<()> {
     Ok(())
 }
 
-fn list_device(device: Device) -> linuxvideo::Result<()> {
+fn list_device(device: Device) -> io::Result<()> {
     let caps = device.capabilities()?;
     println!("- {}: {}", device.path()?.display(), caps.card());
     println!("  driver: {}", caps.driver());

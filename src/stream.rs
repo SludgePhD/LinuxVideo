@@ -2,11 +2,12 @@
 
 use std::ffi::c_void;
 use std::fs::File;
+use std::mem;
+use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_int;
 use std::os::unix::prelude::{AsRawFd, RawFd};
 use std::{io, slice};
-use std::{mem, ptr};
 
 use nix::sys::mman::{mmap, munmap, MapFlags, ProtFlags};
 
@@ -82,8 +83,9 @@ impl Buffers {
             // NB: buffer sizes are usually `PixFormat::size_image(_)` rounded up to whole pages
             let ptr = unsafe {
                 mmap(
-                    ptr::null_mut(),
-                    buf.length as usize,
+                    None,
+                    NonZeroUsize::try_from(buf.length as usize)
+                        .expect("V4L2 returned buffer size of 0"),
                     // XXX is PROT_WRITE allowed for `ReadStream`s?
                     ProtFlags::PROT_READ | ProtFlags::PROT_WRITE,
                     MapFlags::MAP_SHARED,

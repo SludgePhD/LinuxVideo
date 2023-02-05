@@ -7,7 +7,7 @@ use std::{env, fs::File, io::Write, path::Path};
 
 use anyhow::anyhow;
 use linuxvideo::{
-    format::{PixFormat, Pixelformat},
+    format::{PixFormat, PixelFormat},
     Device,
 };
 
@@ -32,10 +32,10 @@ fn main() -> anyhow::Result<()> {
         device.capabilities()?.device_capabilities()
     );
 
-    let capture = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, Pixelformat::JPEG))?;
+    let capture = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, PixelFormat::JPEG))?;
     println!("negotiated format: {:?}", capture.format());
 
-    let mut stream = capture.into_stream(2)?;
+    let mut stream = capture.into_stream()?;
 
     println!("stream started, waiting for data");
     stream.dequeue(|buf| {

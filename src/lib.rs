@@ -10,14 +10,14 @@ mod macros;
 mod buf_type;
 pub mod controls;
 pub mod format;
-mod pixelformat;
+mod pixel_format;
 mod raw;
 mod shared;
 pub mod stream;
 pub mod uvc;
 
 use nix::errno::Errno;
-use pixelformat::Pixelformat;
+use pixel_format::PixelFormat;
 use std::{
     fmt,
     fs::{self, File, OpenOptions},
@@ -133,14 +133,14 @@ impl Device {
     /// # Errors
     ///
     /// An `ENOTTY` error will be returned if `pixel_format` specifies a format that does not
-    /// describe video data (for example, [`Pixelformat::UVC`] or other metadata formats).
-    pub fn frame_sizes(&self, pixel_format: Pixelformat) -> io::Result<FrameSizes> {
+    /// describe video data (for example, [`PixelFormat::UVC`] or other metadata formats).
+    pub fn frame_sizes(&self, pixel_format: PixelFormat) -> io::Result<FrameSizes> {
         FrameSizes::new(self, pixel_format)
     }
 
     pub fn frame_intervals(
         &self,
-        pixel_format: Pixelformat,
+        pixel_format: PixelFormat,
         width: u32,
         height: u32,
     ) -> io::Result<FrameIntervals> {
@@ -261,7 +261,7 @@ impl Device {
     /// # Format Negotiation
     ///
     /// Generally, the driver is allowed to change most properties of the [`PixFormat`], including
-    /// the requested dimensions and the [`Pixelformat`], if the provided value is not supported.
+    /// the requested dimensions and the [`PixelFormat`], if the provided value is not supported.
     /// However, it is not required to do so and may instead return `EINVAL` if the parameters are
     /// not supported. One example where this happens is with `v4l2loopback`.
     pub fn video_capture(mut self, format: PixFormat) -> io::Result<VideoCaptureDevice> {
@@ -281,7 +281,7 @@ impl Device {
     /// # Format Negotiation
     ///
     /// Generally, the driver is allowed to change most properties of the [`PixFormat`], including
-    /// the requested dimensions and the [`Pixelformat`], if the provided value is not supported.
+    /// the requested dimensions and the [`PixelFormat`], if the provided value is not supported.
     /// However, it is not required to do so and may instead return `EINVAL` if the parameters are
     /// not supported. One example where this happens is with `v4l2loopback`.
     pub fn video_output(mut self, format: PixFormat) -> io::Result<VideoOutputDevice> {
@@ -351,15 +351,12 @@ impl VideoCaptureDevice {
     }
 
     /// Initializes streaming I/O mode with the given number of buffers.
-    ///
-    /// Note that some drivers may fail to allocate even low buffer counts. For example v4l2loopback
-    /// seems to be limited to 2 buffers.
-    pub fn into_stream(self, buffer_count: u32) -> io::Result<ReadStream> {
+    pub fn into_stream(self) -> io::Result<ReadStream> {
         Ok(ReadStream::new(
             self.file,
             BufType::VIDEO_CAPTURE,
             Memory::MMAP,
-            buffer_count,
+            DEFAULT_BUFFER_COUNT,
         )?)
     }
 }

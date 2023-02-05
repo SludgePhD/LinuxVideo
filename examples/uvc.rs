@@ -4,7 +4,7 @@ use std::{env, path::Path};
 
 use anyhow::{anyhow, bail};
 use linuxvideo::{
-    format::{MetaFormat, Pixelformat},
+    format::{MetaFormat, PixelFormat},
     uvc::UvcMetadata,
     CapabilityFlags, Device,
 };
@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
         bail!("device does not support `META_CAPTURE` capability");
     }
 
-    let meta = device.meta_capture(MetaFormat::new(Pixelformat::UVC))?;
+    let meta = device.meta_capture(MetaFormat::new(PixelFormat::UVC))?;
 
     let mut stream = meta.into_stream()?;
 

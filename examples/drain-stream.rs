@@ -13,7 +13,7 @@ use std::{
 
 use anyhow::anyhow;
 use linuxvideo::{
-    format::{PixFormat, Pixelformat},
+    format::{PixFormat, PixelFormat},
     Device,
 };
 
@@ -33,10 +33,10 @@ fn main() -> anyhow::Result<()> {
         device.capabilities()?.device_capabilities()
     );
 
-    let capture = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, Pixelformat::YUYV))?;
+    let capture = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, PixelFormat::YUYV))?;
     println!("negotiated format: {:?}", capture.format());
 
-    let mut stream = capture.into_stream(2)?;
+    let mut stream = capture.into_stream()?;
 
     println!("stream started, waiting for data");
     let mut frames = 0;

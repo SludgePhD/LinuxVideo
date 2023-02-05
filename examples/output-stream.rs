@@ -15,13 +15,13 @@ use std::{
 use anyhow::{anyhow, bail};
 use itertools::Itertools;
 use linuxvideo::{
-    format::{PixFormat, Pixelformat},
+    format::{PixFormat, PixelFormat},
     CapabilityFlags, Device,
 };
 
 const WIDTH: u32 = 120;
 const HEIGHT: u32 = 60;
-const PIXFMT: Pixelformat = Pixelformat::RGB32;
+const PIXFMT: PixelFormat = PixelFormat::RGB32;
 
 const RED: [u8; 4] = [0xff, 0xff, 0, 0];
 const GREEN: [u8; 4] = [0xff, 0, 0xff, 0];
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
     let fmt = output.format();
     println!("set format: {:?}", fmt);
 
-    if fmt.pixelformat() != PIXFMT {
+    if fmt.pixel_format() != PIXFMT {
         bail!("driver does not support the requested parameters");
     }
 

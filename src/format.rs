@@ -7,7 +7,7 @@ use nix::errno::Errno;
 use crate::shared::{FrmIvalType, FrmSizeType};
 use crate::{byte_array_to_str, raw, BufType, Device, Fract};
 
-pub use crate::pixelformat::Pixelformat;
+pub use crate::pixel_format::PixelFormat;
 pub use crate::shared::FormatFlags;
 
 /// Formats of all possible buffer types.
@@ -57,11 +57,11 @@ impl Format {
 }
 
 impl PixFormat {
-    pub fn new(width: u32, height: u32, pixelformat: Pixelformat) -> Self {
+    pub fn new(width: u32, height: u32, pixel_format: PixelFormat) -> Self {
         Self(raw::PixFormat {
             width,
             height,
-            pixelformat,
+            pixel_format,
             ..unsafe { mem::zeroed() }
         })
     }
@@ -78,8 +78,8 @@ impl PixFormat {
         self.0.height
     }
 
-    pub fn pixelformat(&self) -> Pixelformat {
-        self.0.pixelformat
+    pub fn pixel_format(&self) -> PixelFormat {
+        self.0.pixel_format
     }
 
     pub fn bytes_per_line(&self) -> u32 {
@@ -123,9 +123,9 @@ impl Window {
 }
 
 impl MetaFormat {
-    pub fn new(pixelformat: Pixelformat) -> Self {
+    pub fn new(format: PixelFormat) -> Self {
         Self(raw::MetaFormat {
-            dataformat: pixelformat,
+            dataformat: format,
             buffersize: 0, // set by driver during `S_FMT`
         })
     }
@@ -144,7 +144,7 @@ impl fmt::Debug for PixFormat {
         f.debug_struct("PixFormat")
             .field("width", &self.0.width)
             .field("height", &self.0.height)
-            .field("pixelformat", &self.0.pixelformat)
+            .field("pixel_format", &self.0.pixel_format)
             .field("field", &self.0.field)
             .field("bytesperline", &self.0.bytesperline)
             .field("sizeimage", &self.0.sizeimage)
@@ -162,7 +162,7 @@ impl fmt::Debug for PixFormatMplane {
         f.debug_struct("PixFormatMplane")
             .field("width", &{ self.0.width })
             .field("height", &{ self.0.height })
-            .field("pixelformat", &{ self.0.pixelformat })
+            .field("pixel_format", &{ self.0.pixel_format })
             .field("field", &{ self.0.field })
             .field("colorspace", &{ self.0.colorspace })
             .field("plane_fmt", &self.plane_formats().collect::<Vec<_>>())
@@ -266,8 +266,8 @@ impl FormatDesc {
         byte_array_to_str(&self.0.description)
     }
 
-    pub fn pixelformat(&self) -> Pixelformat {
-        self.0.pixelformat
+    pub fn pixel_format(&self) -> PixelFormat {
+        self.0.pixel_format
     }
 }
 
@@ -278,7 +278,7 @@ impl fmt::Debug for FormatDesc {
             .field("type", &self.0.type_)
             .field("flags", &self.0.flags)
             .field("description", &self.description())
-            .field("pixelformat", &self.0.pixelformat)
+            .field("pixel_format", &self.0.pixel_format)
             .finish()
     }
 }
@@ -290,7 +290,7 @@ pub enum FrameSizes {
 }
 
 impl FrameSizes {
-    pub(crate) fn new(device: &Device, pixel_format: Pixelformat) -> io::Result<Self> {
+    pub(crate) fn new(device: &Device, pixel_format: PixelFormat) -> io::Result<Self> {
         unsafe {
             let mut desc = raw::FrmSizeEnum {
                 index: 0,
@@ -422,7 +422,7 @@ pub enum FrameIntervals {
 impl FrameIntervals {
     pub(crate) fn new(
         device: &Device,
-        pixel_format: Pixelformat,
+        pixel_format: PixelFormat,
         width: u32,
         height: u32,
     ) -> io::Result<Self> {

@@ -13,7 +13,7 @@ use nix::libc::timeval;
 use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
 
 use crate::buf_type::BufType;
-use crate::{shared::*, Pixelformat};
+use crate::{shared::*, PixelFormat};
 
 pub const VIDEO_MAX_PLANES: usize = 8;
 
@@ -32,7 +32,7 @@ pub struct Capabilities {
 #[repr(C)]
 pub struct FmtDesc {
     /// Number of the format in the enumeration, set by the application. This is in no way related
-    /// to the `pixelformat` field.
+    /// to the `pixel_format` field.
     pub index: u32,
     /// Type of the data stream, set by the application. Only these types are valid here:
     ///
@@ -49,7 +49,7 @@ pub struct FmtDesc {
     /// `v4l2_fourcc()` macro:
     ///
     /// `#define v4l2_fourcc(a,b,c,d) (((__u32)(a)<<0)|((__u32)(b)<<8)|((__u32)(c)<<16)|((__u32)(d)<<24))`
-    pub pixelformat: Pixelformat,
+    pub pixel_format: PixelFormat,
     /// Media bus code restricting the enumerated formats, set by the application. Only applicable
     /// to drivers that advertise the `V4L2_CAP_IO_MC` capability, shall be 0 otherwise.
     pub mbus_code: u32,
@@ -113,7 +113,7 @@ pub struct Window {
 pub struct PixFormat {
     pub width: u32,
     pub height: u32,
-    pub pixelformat: Pixelformat,
+    pub pixel_format: PixelFormat,
     pub field: Field,
     pub bytesperline: u32,
     pub sizeimage: u32,
@@ -139,7 +139,7 @@ pub struct PlanePixFormat {
 pub struct PixFormatMplane {
     pub width: u32,
     pub height: u32,
-    pub pixelformat: Pixelformat,
+    pub pixel_format: PixelFormat,
     pub field: u32,
     pub colorspace: u32,
     pub plane_fmt: [PlanePixFormat; VIDEO_MAX_PLANES],
@@ -168,7 +168,7 @@ pub struct Output {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct MetaFormat {
-    pub dataformat: Pixelformat,
+    pub dataformat: PixelFormat,
     pub buffersize: u32,
 }
 
@@ -283,7 +283,7 @@ pub union PlaneMemoryUnion {
 #[repr(C)]
 pub struct FrmSizeEnum {
     pub index: u32,
-    pub pixel_format: Pixelformat,
+    pub pixel_format: PixelFormat,
     pub type_: FrmSizeType,
     pub union: FrmSizeUnion,
     pub reserved: [u32; 2],
@@ -316,7 +316,7 @@ pub struct FrmSizeStepwise {
 #[repr(C)]
 pub struct FrmIvalEnum {
     pub index: u32,
-    pub pixel_format: Pixelformat,
+    pub pixel_format: PixelFormat,
     pub width: u32,
     pub height: u32,
     pub type_: FrmIvalType,

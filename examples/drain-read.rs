@@ -13,7 +13,7 @@ use std::{
 
 use anyhow::anyhow;
 use linuxvideo::{
-    format::{PixFormat, Pixelformat},
+    format::{PixFormat, PixelFormat},
     Device,
 };
 
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     );
 
     let mut capture =
-        device.video_capture(PixFormat::new(u32::MAX, u32::MAX, Pixelformat::YUYV))?;
+        device.video_capture(PixFormat::new(u32::MAX, u32::MAX, PixelFormat::YUYV))?;
     println!("negotiated format: {:?}", capture.format());
     let size = capture.format().size_image() as usize;
     let mut buf = vec![0; size];

@@ -31,7 +31,7 @@ fn list_device(device: Device) -> io::Result<()> {
         for res in device.formats(buf) {
             match res {
                 Ok(fmt) => {
-                    println!("  - [{}] {}", fmt.pixelformat(), fmt.description());
+                    println!("  - [{}] {}", fmt.pixel_format(), fmt.description());
                     if !fmt.flags().is_empty() {
                         println!("    {:?}", fmt.flags());
                     }
@@ -41,7 +41,7 @@ fn list_device(device: Device) -> io::Result<()> {
                         continue;
                     }
 
-                    let sizes = match device.frame_sizes(fmt.pixelformat()) {
+                    let sizes = match device.frame_sizes(fmt.pixel_format()) {
                         Ok(sizes) => sizes,
                         Err(e) => {
                             println!("  - error while fetching supported frame sizes: {}", e);
@@ -52,7 +52,7 @@ fn list_device(device: Device) -> io::Result<()> {
                         FrameSizes::Discrete(iter) => {
                             for size in iter {
                                 let intervals = device.frame_intervals(
-                                    fmt.pixelformat(),
+                                    fmt.pixel_format(),
                                     size.width(),
                                     size.height(),
                                 )?;
@@ -67,12 +67,12 @@ fn list_device(device: Device) -> io::Result<()> {
                         }
                         FrameSizes::Stepwise(s) => {
                             let min_ivals = device.frame_intervals(
-                                fmt.pixelformat(),
+                                fmt.pixel_format(),
                                 s.min_width(),
                                 s.min_height(),
                             )?;
                             let max_ivals = device.frame_intervals(
-                                fmt.pixelformat(),
+                                fmt.pixel_format(),
                                 s.max_width(),
                                 s.max_height(),
                             )?;
@@ -90,12 +90,12 @@ fn list_device(device: Device) -> io::Result<()> {
                         }
                         FrameSizes::Continuous(s) => {
                             let min_ivals = device.frame_intervals(
-                                fmt.pixelformat(),
+                                fmt.pixel_format(),
                                 s.min_width(),
                                 s.min_height(),
                             )?;
                             let max_ivals = device.frame_intervals(
-                                fmt.pixelformat(),
+                                fmt.pixel_format(),
                                 s.max_width(),
                                 s.max_height(),
                             )?;

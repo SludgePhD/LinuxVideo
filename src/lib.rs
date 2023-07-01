@@ -3,8 +3,6 @@
 //! This library provides a (hopefully) convenient and high-level wrapper around the V4L2 ioctls,
 //! and allows accessing video devices (capture cards, webcams, etc.) on Linux systems.
 
-#![forbid(unaligned_references)] // can't believe this isn't at least deny-by-default
-
 #[macro_use]
 mod macros;
 mod buf_type;

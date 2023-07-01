@@ -85,7 +85,11 @@ impl Device {
     /// Opens a V4L2 device file from the given path.
     ///
     /// If the path does not refer to a V4L2 device node, an error will be returned.
-    pub fn open(path: &Path) -> io::Result<Self> {
+    pub fn open<A: AsRef<Path>>(path: A) -> io::Result<Self> {
+        Self::open_impl(path.as_ref())
+    }
+
+    fn open_impl(path: &Path) -> io::Result<Self> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
         let mut this = Self {
             file,

@@ -234,6 +234,32 @@ impl ReadStream {
 
         res
     }
+
+    /// Tests whether the next call to [`ReadStream::dequeue`] will block.
+    ///
+    /// If this returns `false`, a filled buffer is already available and the next call to
+    /// [`ReadStream::dequeue`] will not block, but finish immediately. If this returns `true`,
+    /// the next call will block until the next buffer is available.
+    pub fn will_block(&self) -> io::Result<bool> {
+        for i in 0..self.buffers.buffers.len() {
+            let mut buf: raw::Buffer = unsafe { mem::zeroed() };
+            buf.type_ = self.buf_type;
+            buf.memory = self.mem_type;
+            buf.index = i as u32;
+
+            unsafe {
+                raw::querybuf(self.file.as_raw_fd(), &mut buf)?;
+            }
+
+            if buf.flags.contains(BufFlag::DONE) {
+                // A buffer is marked `DONE`, so it will be returned immediately when calling
+                // `dequeue`.
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
 }
 
 impl Drop for ReadStream {

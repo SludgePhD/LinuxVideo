@@ -32,14 +32,16 @@ fn main() -> anyhow::Result<()> {
         device.capabilities()?.device_capabilities()
     );
 
-    let capture = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, PixelFormat::JPEG))?;
+    let capture = device.video_capture(PixFormat::new(u32::MAX, u32::MAX, PixelFormat::MJPG))?;
+    
     println!("negotiated format: {:?}", capture.format());
 
     let mut stream = capture.into_stream()?;
 
     println!("stream started, waiting for data");
     stream.dequeue(|buf| {
-        file.write_all(&*buf)?;
+        let bytesused = usize::try_from (buf.bytesused ()).unwrap ();
+        file.write_all(&buf [0..bytesused])?;
         println!("wrote file");
         Ok(())
     })?;

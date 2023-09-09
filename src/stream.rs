@@ -224,6 +224,7 @@ impl ReadStream {
             unsafe { slice::from_raw_parts(buffer.ptr as *const u8, buffer.length as usize) };
         let view = ReadBufferView {
             flags: buf.flags,
+            bytesused: buf.bytesused,
             data,
         };
 
@@ -282,10 +283,15 @@ impl AsRawFd for ReadStream {
 /// Dereferences to a byte slice.
 pub struct ReadBufferView<'a> {
     flags: BufFlag,
+    bytesused: u32,
     data: &'a [u8],
 }
 
 impl ReadBufferView<'_> {
+    pub fn bytesused(&self) -> u32 {
+        self.bytesused
+    }
+    
     /// Returns whether the error flag for this buffer is set.
     ///
     /// If this returns `true`, the application should expect data corruption in the buffer data.

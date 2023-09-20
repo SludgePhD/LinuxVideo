@@ -36,6 +36,7 @@ struct Buffers {
 }
 
 unsafe impl Send for Buffers {}
+unsafe impl Sync for Buffers {}
 
 /// Number of buffers we request by default.
 pub(super) const DEFAULT_BUFFER_COUNT: u32 = 2;
@@ -433,5 +434,20 @@ impl DerefMut for WriteBufferView<'_> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.data
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stream_types_are_send_sync() {
+        fn assert<T: Send + Sync>() {}
+
+        assert::<WriteStream>();
+        assert::<ReadStream>();
+        assert::<WriteBufferView<'_>>();
+        assert::<ReadBufferView<'_>>();
     }
 }

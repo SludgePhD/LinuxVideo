@@ -226,6 +226,7 @@ impl ReadStream {
         let view = ReadBufferView {
             flags: buf.flags,
             data,
+            bytesused: buf.bytesused as usize,
         };
 
         let res = cb(view);
@@ -284,15 +285,30 @@ impl AsRawFd for ReadStream {
 pub struct ReadBufferView<'a> {
     flags: BufFlag,
     data: &'a [u8],
+    bytesused: usize,
 }
 
-impl ReadBufferView<'_> {
+impl<'a> ReadBufferView<'a> {
     /// Returns whether the error flag for this buffer is set.
     ///
     /// If this returns `true`, the application should expect data corruption in the buffer data.
     #[inline]
     pub fn is_error(&self) -> bool {
         self.flags.contains(BufFlag::ERROR)
+    }
+
+    /// Returns a reference to the *entire* backing buffer.
+    ///
+    /// [`ReadBufferView`] dereferences to the *used* portion of the buffer. For fixed-size
+    /// (uncompressed) image formats, the *used* portion is typically equal to the entire buffer,
+    /// but for compressed formats like MJPEG, the backing buffer, which can be access with this
+    /// method, is usually a lot larger than the actual data of interest.
+    ///
+    /// Normally, this method does not need to be used, as only the used portion of the buffer is
+    /// needed.
+    #[inline]
+    pub fn raw_buffer(&self) -> &'a [u8] {
+        self.data
     }
 }
 
@@ -301,7 +317,7 @@ impl Deref for ReadBufferView<'_> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.data
+        &self.data[..self.bytesused]
     }
 }
 

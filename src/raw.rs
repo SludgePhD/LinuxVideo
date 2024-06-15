@@ -81,6 +81,7 @@ pub struct Rect {
     pub height: u32,
 }
 
+#[allow(dead_code)] // currently unused
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct Area {

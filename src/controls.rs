@@ -175,10 +175,10 @@ impl Iterator for TextMenuIter<'_> {
     type Item = io::Result<TextMenuItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_index > self.max_index {
-            None
-        } else {
-            loop {
+        loop {
+            if self.next_index > self.max_index {
+                return None;
+            } else {
                 unsafe {
                     let mut raw = raw::QueryMenu {
                         id: self.cid.0,

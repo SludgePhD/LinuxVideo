@@ -12,10 +12,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use linuxvideo::{
-    format::{PixFormat, PixelFormat},
-    Device,
-};
+use linuxvideo::{format::Format, BufType, Device};
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
@@ -33,8 +30,10 @@ fn main() -> anyhow::Result<()> {
         device.capabilities()?.device_capabilities()
     );
 
-    let mut capture =
-        device.video_capture(PixFormat::new(u32::MAX, u32::MAX, PixelFormat::YUYV))?;
+    let Format::VideoCapture(fmt) = device.format(BufType::VIDEO_CAPTURE)? else {
+        unreachable!()
+    };
+    let mut capture = device.video_capture(fmt)?;
     println!("negotiated format: {:?}", capture.format());
     let size = capture.format().size_image() as usize;
     let mut buf = vec![0; size];

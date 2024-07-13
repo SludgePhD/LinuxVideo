@@ -14,5 +14,4 @@ bitflags = "1.2.1"
 
 [dev-dependencies]
 env_logger = { version = "0.10.0", default-features = false }
-itertools = "0.10.3"
 anyhow = "1.0.68"

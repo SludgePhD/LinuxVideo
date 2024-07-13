@@ -2,22 +2,23 @@
 //!
 //! Uses the [`linuxvideo::stream::WriteStream`] returned by [`linuxvideo::VideoOutputDevice::into_stream`].
 
-// TODO: does not seem to work with v4l2loopback
-
 use std::{
     env,
     io::Write,
-    path::Path,
     thread,
     time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, bail};
-use itertools::Itertools;
 use linuxvideo::{
     format::{PixFormat, PixelFormat},
-    CapabilityFlags, Device,
+    stream::WriteStream,
+    CapabilityFlags, Device, VideoOutputDevice,
 };
+
+// If `true`, streaming I/O will be used if supported. If `false`, read/write I/O will be used if supported.
+// TODO: does not seem to work with v4l2loopback
+const USE_STREAM: bool = false;
 
 const WIDTH: u32 = 120;
 const HEIGHT: u32 = 60;
@@ -28,19 +29,22 @@ const GREEN: [u8; 4] = [0xff, 0, 0xff, 0];
 const BLUE: [u8; 4] = [0xff, 0, 0, 0xff];
 const TRANSPARENT: [u8; 4] = [0, 0, 0, 0];
 
+enum Output {
+    Write(VideoOutputDevice),
+    Stream(WriteStream),
+}
+
 fn main() -> anyhow::Result<()> {
     let mut args = env::args_os().skip(1);
 
     let path = args
         .next()
-        .ok_or_else(|| anyhow!("usage: write <device>"))?;
+        .ok_or_else(|| anyhow!("usage: output <device>"))?;
 
-    let device = Device::open(Path::new(&path))?;
-    if !device
-        .capabilities()?
-        .device_capabilities()
-        .contains(CapabilityFlags::VIDEO_OUTPUT)
-    {
+    let device = Device::open(path)?;
+    let caps = &device.capabilities()?.device_capabilities();
+    println!("device capabilities: {caps:?}");
+    if !caps.contains(CapabilityFlags::VIDEO_OUTPUT) {
         bail!("cannot write data: selected device does not support `VIDEO_OUTPUT` capability");
     }
 
@@ -52,9 +56,10 @@ fn main() -> anyhow::Result<()> {
         bail!("driver does not support the requested parameters");
     }
 
-    let mut image = (0..fmt.height())
-        .cartesian_product(0..fmt.width())
-        .flat_map(|(y, x)| {
+    let mut image = (0..fmt.height() * fmt.width())
+        .flat_map(|i| {
+            let y = i / fmt.width();
+            let x = i % fmt.width();
             if x == y {
                 RED
             } else if x < 5 || x > fmt.width() - 5 {
@@ -74,16 +79,29 @@ fn main() -> anyhow::Result<()> {
     assert!(image.len() <= fmt.size_image() as usize);
     image.resize(fmt.size_image() as usize, 0xff);
 
-    let mut stream = output.into_stream()?;
+    let can_stream = caps.contains(CapabilityFlags::STREAMING);
+    let can_rw = caps.contains(CapabilityFlags::READWRITE);
+    let mut output = match (USE_STREAM, can_stream, can_rw) {
+        (true, true, _) | (false, true, false) => Output::Stream(output.into_stream()?),
+        (_, false, true) | (false, _, true) => Output::Write(output),
+        (_, false, false) => bail!("device is missing a required I/O capability"),
+    };
 
     println!("output started");
     let mut frames = 0;
     let mut time = Instant::now();
     loop {
-        stream.enqueue(|mut buf| {
-            buf.copy_from_slice(&image);
-            Ok(())
-        })?;
+        match &mut output {
+            Output::Write(device) => {
+                device.write(&image)?;
+            }
+            Output::Stream(stream) => {
+                stream.enqueue(|mut buf| {
+                    buf.copy_from_slice(&image);
+                    Ok(())
+                })?;
+            }
+        }
 
         frames += 1;
         print!(".");

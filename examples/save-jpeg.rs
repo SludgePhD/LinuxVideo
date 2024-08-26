@@ -24,18 +24,18 @@ fn main() -> anyhow::Result<()> {
 
     let device = args
         .next()
-        .ok_or_else(|| anyhow!("usage: save-stream <device> <file> [<count>]"))?;
+        .ok_or_else(|| anyhow!("usage: save-jpeg <device> <file> [<count>]"))?;
 
     let file_path = args
         .next()
-        .ok_or_else(|| anyhow!("usage: save-stream <device> <file> [<count>]"))?;
+        .ok_or_else(|| anyhow!("usage: save-jpeg <device> <file> [<count>]"))?;
 
     let count: u32 = args.next().map_or(1, |osstr| {
         osstr
             .to_str()
             .expect("invalid UTF-8")
             .parse()
-            .expect("invalid valud for <count>")
+            .expect("invalid value for <count>")
     });
 
     let device = Device::open(Path::new(&device))?;

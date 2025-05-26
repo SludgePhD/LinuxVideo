@@ -14,6 +14,6 @@ nix = "0.26.1"
 bitflags = "1.2.1"
 
 [dev-dependencies]
-env_logger = { version = "0.10.0", default-features = false }
+env_logger = { version = "0.11.8", default-features = false }
 anyhow = "1.0.68"
 png = "0.17.13"

@@ -1,6 +1,6 @@
 [package]
 name = "linuxvideo"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 license = "0BSD"
 description = "V4L2 video capture and output library"

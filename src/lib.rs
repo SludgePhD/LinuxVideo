@@ -2,6 +2,9 @@
 //!
 //! This library provides a (hopefully) convenient and high-level wrapper around the V4L2 ioctls,
 //! and allows accessing video devices (capture cards, webcams, etc.) on Linux systems.
+//!
+//! The main entry points to the library are [`list`], for enumerating all V4L2 devices (and opening
+//! one of them by name), and [`Device::open`], for opening a specific path.
 
 #[macro_use]
 mod macros;
@@ -36,7 +39,25 @@ pub use shared::{
     OutputCapabilities, OutputType,
 };
 
+const DEVICE_PREFIXES: &[&str] = &[
+    "video",
+    "vbi",
+    "radio",
+    "swradio",
+    "v4l-touch",
+    "v4l-subdev",
+];
+
 /// Returns an iterator over all connected V4L2 devices.
+///
+/// This will enumerate all devices in `/dev` that match one of the V4L2 device file patterns:
+///
+/// - **`/dev/video*`**: webcams, capture cards, video output devices, codecs, video overlays, etc.
+/// - **`/dev/vbi*`**: devices for capturing and outputting raw **V**ertical **B**lanking **I**nterval data.
+/// - **`/dev/radio*`**: AM and FM radio transmitters and receivers.
+/// - **`/dev/swradio*`**: Software-defined radios.
+/// - **`/dev/v4l-touch*`**: Touch screens and other touch devices.
+/// - **`/dev/v4l-subdev*`**: A sub-device exported as part of a bigger device.
 pub fn list() -> io::Result<impl Iterator<Item = io::Result<Device>>> {
     Ok(fs::read_dir("/dev")?.flat_map(|file| {
         let file = match file {
@@ -55,15 +76,10 @@ pub fn list() -> io::Result<impl Iterator<Item = io::Result<Device>>> {
         }
 
         let name = file.file_name();
-        let prefixes: &[&[u8]] = &[
-            b"video",
-            b"vbi",
-            b"radio",
-            b"swradio",
-            b"v4l-touch",
-            b"v4l-subdev",
-        ];
-        if prefixes.iter().any(|p| name.as_bytes().starts_with(p)) {
+        if DEVICE_PREFIXES
+            .iter()
+            .any(|p| name.as_bytes().starts_with(p.as_bytes()))
+        {
             Some(Device::open(&file.path()))
         } else {
             None
@@ -103,10 +119,13 @@ impl Device {
     }
 
     /// Returns the path to the V4L2 device.
+    ///
+    /// This will invoke `readlink(2)` on `/proc/self/fd/N` to find the path.
     pub fn path(&self) -> io::Result<PathBuf> {
-        Ok(fs::read_link(format!("/proc/self/fd/{}", self.fd()))?)
+        fs::read_link(format!("/proc/self/fd/{}", self.fd()))
     }
 
+    /// Queries the device's [`Capabilities`].
     pub fn capabilities(&self) -> io::Result<Capabilities> {
         unsafe {
             let mut caps = MaybeUninit::uninit();
@@ -148,6 +167,11 @@ impl Device {
         FrameIntervals::new(self, pixel_format, width, height)
     }
 
+    /// Returns an iterator over the [`Input`]s of the device.
+    ///
+    /// # Errors
+    ///
+    /// May return `ENOTTY` if the device is not an input device.
     pub fn inputs(&self) -> InputIter<'_> {
         InputIter {
             device: self,
@@ -156,6 +180,11 @@ impl Device {
         }
     }
 
+    /// Returns an iterator over the [`Output`]s of the device.
+    ///
+    /// # Errors
+    ///
+    /// May return `ENOTTY` if the device is not an output device.
     pub fn outputs(&self) -> OutputIter<'_> {
         OutputIter {
             device: self,
@@ -312,6 +341,8 @@ impl Device {
 }
 
 /// A video device configured for video capture.
+///
+/// Returned by [`Device::video_capture`].
 pub struct VideoCaptureDevice {
     file: File,
     format: PixFormat,
@@ -351,7 +382,7 @@ impl VideoCaptureDevice {
         }
     }
 
-    /// Initializes streaming I/O mode with the given number of buffers.
+    /// Initializes streaming I/O mode.
     pub fn into_stream(self) -> io::Result<ReadStream> {
         Ok(ReadStream::new(
             self.file,
@@ -373,6 +404,8 @@ impl Read for VideoCaptureDevice {
 }
 
 /// A video device configured for video output.
+///
+/// Returned by [`Device::video_output`].
 pub struct VideoOutputDevice {
     file: File,
     format: PixFormat,
@@ -413,6 +446,8 @@ impl Write for VideoOutputDevice {
 }
 
 /// A device configured for metadata capture.
+///
+/// Returned by [`Device::meta_capture`].
 pub struct MetaCaptureDevice {
     file: File,
     format: MetaFormat,

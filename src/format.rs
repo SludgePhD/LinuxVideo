@@ -235,7 +235,7 @@ impl Iterator for FormatDescIter<'_> {
                 mbus_code: 0,
                 ..mem::zeroed()
             };
-            match raw::VIDIOC_ENUM_FMT.ioctl(&self.device.file, &mut desc) {
+            match raw::VIDIOC_ENUM_FMT.ioctl(self.device, &mut desc) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
@@ -297,7 +297,7 @@ impl FrameSizes {
                 pixel_format,
                 ..mem::zeroed()
             };
-            raw::VIDIOC_ENUM_FRAMESIZES.ioctl(&device.file, &mut desc)?;
+            raw::VIDIOC_ENUM_FRAMESIZES.ioctl(device, &mut desc)?;
 
             match desc.type_ {
                 FrmSizeType::DISCRETE => {
@@ -311,7 +311,7 @@ impl FrameSizes {
                             pixel_format,
                             ..mem::zeroed()
                         };
-                        match raw::VIDIOC_ENUM_FRAMESIZES.ioctl(&device.file, &mut desc) {
+                        match raw::VIDIOC_ENUM_FRAMESIZES.ioctl(device, &mut desc) {
                             Ok(_) => {
                                 assert_eq!(desc.type_, FrmSizeType::DISCRETE);
                                 sizes.push(DiscreteFrameSize {
@@ -434,7 +434,7 @@ impl FrameIntervals {
                 height,
                 ..mem::zeroed()
             };
-            raw::VIDIOC_ENUM_FRAMEINTERVALS.ioctl(&device.file, &mut desc)?;
+            raw::VIDIOC_ENUM_FRAMEINTERVALS.ioctl(device, &mut desc)?;
 
             match desc.type_ {
                 FrmIvalType::DISCRETE => {
@@ -450,7 +450,7 @@ impl FrameIntervals {
                             height,
                             ..mem::zeroed()
                         };
-                        match raw::VIDIOC_ENUM_FRAMEINTERVALS.ioctl(&device.file, &mut desc) {
+                        match raw::VIDIOC_ENUM_FRAMEINTERVALS.ioctl(device, &mut desc) {
                             Ok(_) => {
                                 assert_eq!(desc.type_, FrmIvalType::DISCRETE);
                                 ivals.push(DiscreteFrameInterval {

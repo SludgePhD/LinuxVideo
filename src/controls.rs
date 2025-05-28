@@ -49,7 +49,7 @@ impl Iterator for ControlIter<'_> {
                     id,
                     ..mem::zeroed()
                 };
-                match raw::VIDIOC_QUERYCTRL.ioctl(&self.device.file, &mut raw) {
+                match raw::VIDIOC_QUERYCTRL.ioctl(self.device, &mut raw) {
                     Ok(_) => {
                         if self.use_ctrl_flag_next_ctrl {
                             self.next_cid.0 = raw.id;
@@ -182,7 +182,7 @@ impl Iterator for TextMenuIter<'_> {
                     };
 
                     self.next_index += 1;
-                    match raw::VIDIOC_QUERYMENU.ioctl(&self.device.file, &mut raw) {
+                    match raw::VIDIOC_QUERYMENU.ioctl(self.device, &mut raw) {
                         Ok(_) => return Some(Ok(TextMenuItem { raw })),
                         Err(e) if e.raw_os_error() == Some(libc::EINVAL as _) => continue,
                         Err(other) => return Some(Err(other.into())),

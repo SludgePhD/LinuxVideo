@@ -96,7 +96,7 @@ impl<'a> ExtensionUnit<'a> {
         };
 
         unsafe {
-            raw::UVCIOC_CTRL_QUERY.ioctl(&self.device.file, &mut query)?;
+            raw::UVCIOC_CTRL_QUERY.ioctl(self.device, &mut query)?;
 
             Ok(ControlInfo::from_bits_unchecked(info))
         }

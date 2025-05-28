@@ -3,8 +3,9 @@
 use std::ffi::c_void;
 use std::fs::File;
 use std::ops::{Deref, DerefMut};
+use std::os::fd::AsFd;
 use std::os::raw::c_int;
-use std::os::unix::prelude::{AsRawFd, RawFd};
+use std::os::unix::prelude::*;
 use std::{io, slice};
 use std::{mem, ptr};
 
@@ -162,7 +163,7 @@ impl ReadStream {
         buf.index = index;
 
         unsafe {
-            raw::VIDIOC_QBUF.ioctl(&self.file, &mut buf)?;
+            raw::VIDIOC_QBUF.ioctl(self, &mut buf)?;
         }
 
         self.buffers.buffers[index as usize].queued = true;
@@ -185,7 +186,7 @@ impl ReadStream {
     fn stream_on(&mut self) -> io::Result<()> {
         unsafe {
             let buf_type = self.buf_type.0 as c_int;
-            raw::VIDIOC_STREAMON.ioctl(&self.file, &buf_type)?;
+            raw::VIDIOC_STREAMON.ioctl(self, &buf_type)?;
         }
 
         Ok(())
@@ -195,7 +196,7 @@ impl ReadStream {
     fn stream_off(&mut self) -> io::Result<()> {
         unsafe {
             let buf_type = self.buf_type.0 as c_int;
-            raw::VIDIOC_STREAMOFF.ioctl(&self.file, &buf_type)?;
+            raw::VIDIOC_STREAMOFF.ioctl(self, &buf_type)?;
         }
 
         for b in &mut self.buffers.buffers {
@@ -219,7 +220,7 @@ impl ReadStream {
         buf.memory = self.mem_type;
 
         unsafe {
-            raw::VIDIOC_DQBUF.ioctl(&self.file, &mut buf)?;
+            raw::VIDIOC_DQBUF.ioctl(self, &mut buf)?;
         }
 
         let buffer = &mut self.buffers.buffers[buf.index as usize];
@@ -253,7 +254,7 @@ impl ReadStream {
             buf.index = i as u32;
 
             unsafe {
-                raw::VIDIOC_QUERYBUF.ioctl(&self.file, &mut buf)?;
+                raw::VIDIOC_QUERYBUF.ioctl(self, &mut buf)?;
             }
 
             if buf.flags.contains(BufFlag::DONE) {
@@ -279,6 +280,13 @@ impl AsRawFd for ReadStream {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.file.as_raw_fd()
+    }
+}
+
+impl AsFd for ReadStream {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
 
@@ -359,7 +367,7 @@ impl WriteStream {
         buf.index = index;
 
         unsafe {
-            raw::VIDIOC_QBUF.ioctl(&self.file, &mut buf)?;
+            raw::VIDIOC_QBUF.ioctl(self, &mut buf)?;
         }
 
         self.buffers.buffers[index as usize].queued = true;
@@ -384,7 +392,7 @@ impl WriteStream {
                 buf.memory = self.mem_type;
 
                 unsafe {
-                    raw::VIDIOC_DQBUF.ioctl(&self.file, &mut buf)?;
+                    raw::VIDIOC_DQBUF.ioctl(self, &mut buf)?;
                 }
 
                 let buf_index = buf.index as usize;
@@ -430,6 +438,20 @@ impl WriteStream {
                 Err(e)
             }
         }
+    }
+}
+
+impl AsRawFd for WriteStream {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        self.file.as_raw_fd()
+    }
+}
+
+impl AsFd for WriteStream {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
 

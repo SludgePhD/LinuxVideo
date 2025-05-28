@@ -3,6 +3,8 @@ use std::io;
 use linuxvideo::Device;
 
 fn main() -> io::Result<()> {
+    env_logger::init();
+
     for res in linuxvideo::list()? {
         match res.and_then(|device| list_device(device)) {
             Ok(()) => {}

@@ -35,6 +35,8 @@ enum Output {
 }
 
 fn main() -> anyhow::Result<()> {
+    env_logger::init();
+
     let mut args = env::args_os().skip(1);
 
     let path = args

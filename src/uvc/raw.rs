@@ -1,4 +1,6 @@
-use nix::ioctl_readwrite;
+//! From `linux/uvcvideo.h`.
+
+use linux_ioctl::{Ioctl, _IOWR};
 
 // These are from `linux/usb/video.h`
 ffi_enum! {
@@ -23,4 +25,4 @@ pub struct XuControlQuery {
     pub data: *mut u8,
 }
 
-ioctl_readwrite!(ctrl_query, 'u', 0x21, XuControlQuery);
+pub const UVCIOC_CTRL_QUERY: Ioctl<*mut XuControlQuery> = _IOWR(b'u', 0x21);

@@ -2,8 +2,6 @@
 
 use std::{fmt, io, mem};
 
-use nix::errno::Errno;
-
 use crate::shared::CONTROL_FLAGS_NEXT_CTRL;
 use crate::{byte_array_to_str, raw, Device};
 
@@ -51,7 +49,7 @@ impl Iterator for ControlIter<'_> {
                     id,
                     ..mem::zeroed()
                 };
-                match raw::queryctrl(self.device.fd(), &mut raw) {
+                match raw::VIDIOC_QUERYCTRL.ioctl(&self.device.file, &mut raw) {
                     Ok(_) => {
                         if self.use_ctrl_flag_next_ctrl {
                             self.next_cid.0 = raw.id;
@@ -60,16 +58,13 @@ impl Iterator for ControlIter<'_> {
                         }
                     }
                     Err(e) => {
-                        match e {
-                            Errno::EINVAL => {
-                                self.use_ctrl_flag_next_ctrl = false;
-                                self.next_cid.0 += 1;
-                                continue; // continue, because there might be gaps
-                            }
-                            e => {
-                                self.finished = true;
-                                return Some(Err(e.into()));
-                            }
+                        if e.raw_os_error() == Some(libc::EINVAL as _) {
+                            self.use_ctrl_flag_next_ctrl = false;
+                            self.next_cid.0 += 1;
+                            continue; // continue, because there might be gaps
+                        } else {
+                            self.finished = true;
+                            return Some(Err(e.into()));
                         }
                     }
                 }
@@ -187,9 +182,9 @@ impl Iterator for TextMenuIter<'_> {
                     };
 
                     self.next_index += 1;
-                    match raw::querymenu(self.device.fd(), &mut raw) {
+                    match raw::VIDIOC_QUERYMENU.ioctl(&self.device.file, &mut raw) {
                         Ok(_) => return Some(Ok(TextMenuItem { raw })),
-                        Err(Errno::EINVAL) => continue,
+                        Err(e) if e.raw_os_error() == Some(libc::EINVAL as _) => continue,
                         Err(other) => return Some(Err(other.into())),
                     }
                 }

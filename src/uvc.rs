@@ -2,10 +2,7 @@
 
 mod raw;
 
-use std::{
-    io, mem,
-    os::unix::prelude::{AsRawFd, RawFd},
-};
+use std::{io, mem};
 
 use bitflags::bitflags;
 
@@ -88,10 +85,6 @@ pub struct ExtensionUnit<'a> {
 }
 
 impl<'a> ExtensionUnit<'a> {
-    fn fd(&self) -> RawFd {
-        self.device.file.as_raw_fd()
-    }
-
     pub fn control_info(&self, selector: u8) -> io::Result<ControlInfo> {
         let mut info = 0;
         let mut query = XuControlQuery {
@@ -103,7 +96,7 @@ impl<'a> ExtensionUnit<'a> {
         };
 
         unsafe {
-            raw::ctrl_query(self.fd(), &mut query)?;
+            raw::UVCIOC_CTRL_QUERY.ioctl(&self.device.file, &mut query)?;
 
             Ok(ControlInfo::from_bits_unchecked(info))
         }

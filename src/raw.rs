@@ -6,11 +6,11 @@
 
 pub mod controls;
 
-use std::ffi::c_void;
+use std::ffi::{c_int, c_void};
 use std::os::raw::c_ulong;
 
-use nix::libc::timeval;
-use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr};
+use libc::timeval;
+use linux_ioctl::{Ioctl, _IOR, _IOW, _IOWR};
 
 use crate::buf_type::BufType;
 use crate::{shared::*, PixelFormat};
@@ -374,22 +374,29 @@ pub struct OutputParm {
     pub reserved: [u32; 4],
 }
 
-ioctl_read!(querycap, 'V', 0, Capabilities);
-ioctl_readwrite!(enum_fmt, 'V', 2, FmtDesc);
-ioctl_readwrite!(enuminput, 'V', 26, Input);
-ioctl_readwrite!(enumoutput, 'V', 48, Output);
-ioctl_readwrite!(g_fmt, 'V', 4, Format);
-ioctl_readwrite!(s_fmt, 'V', 5, Format);
-ioctl_readwrite!(queryctrl, 'V', 36, QueryCtrl);
-ioctl_readwrite!(querymenu, 'V', 37, QueryMenu);
-ioctl_readwrite!(reqbufs, 'V', 8, RequestBuffers);
-ioctl_readwrite!(querybuf, 'V', 9, Buffer);
-ioctl_readwrite!(qbuf, 'V', 15, Buffer);
-ioctl_readwrite!(dqbuf, 'V', 17, Buffer);
-ioctl_write_ptr!(streamon, 'V', 18, BufType);
-ioctl_write_ptr!(streamoff, 'V', 19, BufType);
-ioctl_readwrite!(s_parm, 'V', 22, StreamParm);
-ioctl_readwrite!(g_ctrl, 'V', 27, controls::Control);
-ioctl_readwrite!(s_ctrl, 'V', 28, controls::Control);
-ioctl_readwrite!(enum_framesizes, 'V', 74, FrmSizeEnum);
-ioctl_readwrite!(enum_frameintervals, 'V', 75, FrmIvalEnum);
+pub const VIDIOC_QUERYCAP: Ioctl<*mut Capabilities> = _IOR(b'V', 0);
+pub const VIDIOC_ENUM_FMT: Ioctl<*mut FmtDesc> = _IOWR(b'V', 2);
+pub const VIDIOC_G_FMT: Ioctl<*mut Format> = _IOWR(b'V', 4);
+pub const VIDIOC_S_FMT: Ioctl<*mut Format> = _IOWR(b'V', 5);
+pub const VIDIOC_REQBUFS: Ioctl<*mut RequestBuffers> = _IOWR(b'V', 8);
+pub const VIDIOC_QUERYBUF: Ioctl<*mut Buffer> = _IOWR(b'V', 9);
+// ...
+pub const VIDIOC_QBUF: Ioctl<*mut Buffer> = _IOWR(b'V', 15);
+// ...
+pub const VIDIOC_DQBUF: Ioctl<*mut Buffer> = _IOWR(b'V', 17);
+pub const VIDIOC_STREAMON: Ioctl<*const c_int> = _IOW(b'V', 18);
+pub const VIDIOC_STREAMOFF: Ioctl<*const c_int> = _IOW(b'V', 19);
+// ...
+pub const VIDIOC_S_PARM: Ioctl<*mut StreamParm> = _IOWR(b'V', 22);
+// ...
+pub const VIDIOC_ENUMINPUT: Ioctl<*mut Input> = _IOWR(b'V', 26);
+pub const VIDIOC_G_CTRL: Ioctl<*mut controls::Control> = _IOWR(b'V', 27);
+pub const VIDIOC_S_CTRL: Ioctl<*mut controls::Control> = _IOWR(b'V', 28);
+// ...
+pub const VIDIOC_QUERYCTRL: Ioctl<*mut QueryCtrl> = _IOWR(b'V', 36);
+pub const VIDIOC_QUERYMENU: Ioctl<*mut QueryMenu> = _IOWR(b'V', 37);
+// ...
+pub const VIDIOC_ENUMOUTPUT: Ioctl<*mut Output> = _IOWR(b'V', 48);
+// ...
+pub const VIDIOC_ENUM_FRAMESIZES: Ioctl<*mut FrmSizeEnum> = _IOWR(b'V', 74);
+pub const VIDIOC_ENUM_FRAMEINTERVALS: Ioctl<*mut FrmIvalEnum> = _IOWR(b'V', 75);

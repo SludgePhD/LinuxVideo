@@ -2,8 +2,6 @@
 
 use std::{fmt, io, mem};
 
-use nix::errno::Errno;
-
 use crate::shared::{FrmIvalType, FrmSizeType};
 use crate::{byte_array_to_str, raw, BufType, Device, Fract};
 
@@ -237,13 +235,15 @@ impl Iterator for FormatDescIter<'_> {
                 mbus_code: 0,
                 ..mem::zeroed()
             };
-            match raw::enum_fmt(self.device.fd(), &mut desc) {
+            match raw::VIDIOC_ENUM_FMT.ioctl(&self.device.file, &mut desc) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
-                    match e {
-                        Errno::EINVAL => return None,
-                        e => return Some(Err(e.into())),
+                    if e.raw_os_error() == Some(libc::EINVAL as _) {
+                        // `EINVAL` indicates the end of the list.
+                        return None;
+                    } else {
+                        return Some(Err(e));
                     }
                 }
             }
@@ -297,7 +297,7 @@ impl FrameSizes {
                 pixel_format,
                 ..mem::zeroed()
             };
-            raw::enum_framesizes(device.fd(), &mut desc)?;
+            raw::VIDIOC_ENUM_FRAMESIZES.ioctl(&device.file, &mut desc)?;
 
             match desc.type_ {
                 FrmSizeType::DISCRETE => {
@@ -311,7 +311,7 @@ impl FrameSizes {
                             pixel_format,
                             ..mem::zeroed()
                         };
-                        match raw::enum_framesizes(device.fd(), &mut desc) {
+                        match raw::VIDIOC_ENUM_FRAMESIZES.ioctl(&device.file, &mut desc) {
                             Ok(_) => {
                                 assert_eq!(desc.type_, FrmSizeType::DISCRETE);
                                 sizes.push(DiscreteFrameSize {
@@ -319,7 +319,7 @@ impl FrameSizes {
                                     index,
                                 });
                             }
-                            Err(Errno::EINVAL) => break,
+                            Err(e) if e.raw_os_error() == Some(libc::EINVAL as _) => break,
                             Err(e) => return Err(e.into()),
                         }
                     }
@@ -434,7 +434,7 @@ impl FrameIntervals {
                 height,
                 ..mem::zeroed()
             };
-            raw::enum_frameintervals(device.fd(), &mut desc)?;
+            raw::VIDIOC_ENUM_FRAMEINTERVALS.ioctl(&device.file, &mut desc)?;
 
             match desc.type_ {
                 FrmIvalType::DISCRETE => {
@@ -450,7 +450,7 @@ impl FrameIntervals {
                             height,
                             ..mem::zeroed()
                         };
-                        match raw::enum_frameintervals(device.fd(), &mut desc) {
+                        match raw::VIDIOC_ENUM_FRAMEINTERVALS.ioctl(&device.file, &mut desc) {
                             Ok(_) => {
                                 assert_eq!(desc.type_, FrmIvalType::DISCRETE);
                                 ivals.push(DiscreteFrameInterval {
@@ -458,7 +458,7 @@ impl FrameIntervals {
                                     index,
                                 });
                             }
-                            Err(Errno::EINVAL) => break,
+                            Err(e) if e.raw_os_error() == Some(libc::EINVAL as _) => break,
                             Err(e) => return Err(e.into()),
                         }
                     }

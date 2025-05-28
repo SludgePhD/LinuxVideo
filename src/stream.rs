@@ -2,14 +2,11 @@
 
 use std::ffi::c_void;
 use std::fs::File;
-use std::mem;
-use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_int;
 use std::os::unix::prelude::{AsRawFd, RawFd};
 use std::{io, slice};
-
-use nix::sys::mman::{mmap, munmap, MapFlags, ProtFlags};
+use std::{mem, ptr};
 
 use crate::buf_type::BufType;
 use crate::raw;
@@ -59,7 +56,7 @@ impl Buffers {
         req_bufs.memory = mem_type;
 
         unsafe {
-            raw::reqbufs(fd, &mut req_bufs)?;
+            raw::VIDIOC_REQBUFS.ioctl(&fd, &mut req_bufs)?;
         }
 
         log::debug!("{:?}", req_bufs);
@@ -78,22 +75,24 @@ impl Buffers {
             buf.index = i;
 
             unsafe {
-                raw::querybuf(fd, &mut buf)?;
+                raw::VIDIOC_QUERYBUF.ioctl(&fd, &mut buf)?;
             }
 
             // NB: buffer sizes are usually `PixFormat::size_image(_)` rounded up to whole pages
             let ptr = unsafe {
-                mmap(
-                    None,
-                    NonZeroUsize::try_from(buf.length as usize)
-                        .expect("V4L2 returned buffer size of 0"),
+                libc::mmap(
+                    ptr::null_mut(),
+                    buf.length as _,
                     // XXX is PROT_WRITE allowed for `ReadStream`s?
-                    ProtFlags::PROT_READ | ProtFlags::PROT_WRITE,
-                    MapFlags::MAP_SHARED,
+                    libc::PROT_READ | libc::PROT_WRITE,
+                    libc::MAP_SHARED,
                     fd,
                     buf.m.offset.into(),
-                )?
+                )
             };
+            if ptr == libc::MAP_FAILED {
+                return Err(io::Error::last_os_error());
+            }
 
             assert_eq!(buf.index, i);
             assert_eq!(buf.index as usize, buffers.len());
@@ -117,7 +116,9 @@ impl Drop for Buffers {
         for buffer in &self.buffers {
             match self.ty {
                 AllocType::Mmap => unsafe {
-                    munmap(buffer.ptr, buffer.length as usize).ok();
+                    if libc::munmap(buffer.ptr, buffer.length as _) == -1 {
+                        log::warn!("failed to `munmap` on drop: {}", io::Error::last_os_error());
+                    }
                 },
             }
         }
@@ -161,7 +162,7 @@ impl ReadStream {
         buf.index = index;
 
         unsafe {
-            raw::qbuf(self.file.as_raw_fd(), &mut buf)?;
+            raw::VIDIOC_QBUF.ioctl(&self.file, &mut buf)?;
         }
 
         self.buffers.buffers[index as usize].queued = true;
@@ -183,7 +184,8 @@ impl ReadStream {
     /// This function can potentially block for a noticeable amount of time.
     fn stream_on(&mut self) -> io::Result<()> {
         unsafe {
-            raw::streamon(self.file.as_raw_fd(), &self.buf_type)?;
+            let buf_type = self.buf_type.0 as c_int;
+            raw::VIDIOC_STREAMON.ioctl(&self.file, &buf_type)?;
         }
 
         Ok(())
@@ -192,7 +194,8 @@ impl ReadStream {
     // XXX to publicly expose this, we have to handle the fact that it dequeues all buffers
     fn stream_off(&mut self) -> io::Result<()> {
         unsafe {
-            raw::streamoff(self.file.as_raw_fd(), &self.buf_type)?;
+            let buf_type = self.buf_type.0 as c_int;
+            raw::VIDIOC_STREAMOFF.ioctl(&self.file, &buf_type)?;
         }
 
         for b in &mut self.buffers.buffers {
@@ -216,7 +219,7 @@ impl ReadStream {
         buf.memory = self.mem_type;
 
         unsafe {
-            raw::dqbuf(self.file.as_raw_fd(), &mut buf)?;
+            raw::VIDIOC_DQBUF.ioctl(&self.file, &mut buf)?;
         }
 
         let buffer = &mut self.buffers.buffers[buf.index as usize];
@@ -250,7 +253,7 @@ impl ReadStream {
             buf.index = i as u32;
 
             unsafe {
-                raw::querybuf(self.file.as_raw_fd(), &mut buf)?;
+                raw::VIDIOC_QUERYBUF.ioctl(&self.file, &mut buf)?;
             }
 
             if buf.flags.contains(BufFlag::DONE) {
@@ -356,7 +359,7 @@ impl WriteStream {
         buf.index = index;
 
         unsafe {
-            raw::qbuf(self.file.as_raw_fd(), &mut buf)?;
+            raw::VIDIOC_QBUF.ioctl(&self.file, &mut buf)?;
         }
 
         self.buffers.buffers[index as usize].queued = true;
@@ -381,7 +384,7 @@ impl WriteStream {
                 buf.memory = self.mem_type;
 
                 unsafe {
-                    raw::dqbuf(self.file.as_raw_fd(), &mut buf)?;
+                    raw::VIDIOC_DQBUF.ioctl(&self.file, &mut buf)?;
                 }
 
                 let buf_index = buf.index as usize;

@@ -14,7 +14,6 @@ mod shared;
 pub mod stream;
 pub mod uvc;
 
-use nix::errno::Errno;
 use pixel_format::PixelFormat;
 use std::{
     fmt,
@@ -111,7 +110,7 @@ impl Device {
     pub fn capabilities(&self) -> io::Result<Capabilities> {
         unsafe {
             let mut caps = MaybeUninit::uninit();
-            let res = raw::querycap(self.fd(), caps.as_mut_ptr())?;
+            let res = raw::VIDIOC_QUERYCAP.ioctl(&self.file, caps.as_mut_ptr())?;
             assert_eq!(res, 0);
             Ok(Capabilities(caps.assume_init()))
         }
@@ -178,7 +177,7 @@ impl Device {
         let mut control = raw::controls::Control { id: cid, value: 0 };
 
         unsafe {
-            raw::g_ctrl(self.fd(), &mut control)?;
+            raw::VIDIOC_G_CTRL.ioctl(&self.file, &mut control)?;
         }
 
         Ok(control.value)
@@ -187,7 +186,7 @@ impl Device {
     pub fn write_control_raw(&mut self, cid: Cid, value: i32) -> io::Result<()> {
         let mut control = raw::controls::Control { id: cid, value };
         unsafe {
-            raw::s_ctrl(self.fd(), &mut control)?;
+            raw::VIDIOC_S_CTRL.ioctl(&self.file, &mut control)?;
         }
         Ok(())
     }
@@ -208,7 +207,7 @@ impl Device {
                 type_: buf_type,
                 ..mem::zeroed()
             };
-            raw::g_fmt(self.fd(), &mut format)?;
+            raw::VIDIOC_G_FMT.ioctl(&self.file, &mut format)?;
             let fmt = Format::from_raw(format)
                 .unwrap_or_else(|| todo!("unsupported buffer type {:?}", buf_type));
             Ok(fmt)
@@ -252,7 +251,7 @@ impl Device {
                     raw_format.fmt.meta = f.to_raw();
                 }
             }
-            raw::s_fmt(self.fd(), &mut raw_format)?;
+            raw::VIDIOC_S_FMT.ioctl(&self.file, &mut raw_format)?;
             let fmt = Format::from_raw(raw_format).unwrap();
             Ok(fmt)
         }
@@ -347,7 +346,7 @@ impl VideoCaptureDevice {
                     },
                 },
             };
-            raw::s_parm(self.file.as_raw_fd(), &mut parm)?;
+            raw::VIDIOC_S_PARM.ioctl(&self.file, &mut parm)?;
             Ok(parm.union.capture.timeperframe)
         }
     }
@@ -528,13 +527,15 @@ impl Iterator for OutputIter<'_> {
                 index: self.next_index,
                 ..mem::zeroed()
             };
-            match raw::enumoutput(self.device.fd(), &mut raw) {
+            match raw::VIDIOC_ENUMOUTPUT.ioctl(&self.device.file, &mut raw) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
-                    match e {
-                        Errno::EINVAL => return None,
-                        e => return Some(Err(e.into())),
+                    if e.raw_os_error() == Some(libc::EINVAL as _) {
+                        // `EINVAL` indicates the end of the list.
+                        return None;
+                    } else {
+                        return Some(Err(e));
                     }
                 }
             }
@@ -566,13 +567,15 @@ impl Iterator for InputIter<'_> {
                 index: self.next_index,
                 ..mem::zeroed()
             };
-            match raw::enuminput(self.device.fd(), &mut raw) {
+            match raw::VIDIOC_ENUMINPUT.ioctl(&self.device.file, &mut raw) {
                 Ok(_) => {}
                 Err(e) => {
                     self.finished = true;
-                    match e {
-                        Errno::EINVAL => return None,
-                        e => return Some(Err(e.into())),
+                    if e.raw_os_error() == Some(libc::EINVAL as _) {
+                        // `EINVAL` indicates the end of the list.
+                        return None;
+                    } else {
+                        return Some(Err(e));
                     }
                 }
             }

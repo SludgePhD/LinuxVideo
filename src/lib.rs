@@ -65,25 +65,31 @@ pub fn list() -> io::Result<impl Iterator<Item = io::Result<Device>>> {
             Err(e) => return Some(Err(e.into())),
         };
 
+        let name = file.file_name();
+        if !DEVICE_PREFIXES
+            .iter()
+            .any(|p| name.as_bytes().starts_with(p.as_bytes()))
+        {
+            // Doesn't match any V4L2 device patterns.
+            return None;
+        }
+
+        // Sanity check that it's a char device.
         match file.file_type() {
             Ok(ty) => {
                 if !ty.is_char_device() {
-                    log::debug!("unexpected device file type {:?}", ty);
+                    log::warn!(
+                        "'{}' is not a character device: {:?}",
+                        name.to_string_lossy(),
+                        ty,
+                    );
                     return None;
                 }
             }
             Err(e) => return Some(Err(e.into())),
         }
 
-        let name = file.file_name();
-        if DEVICE_PREFIXES
-            .iter()
-            .any(|p| name.as_bytes().starts_with(p.as_bytes()))
-        {
-            Some(Device::open(&file.path()))
-        } else {
-            None
-        }
+        Some(Device::open(&file.path()))
     }))
 }
 

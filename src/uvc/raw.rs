@@ -1,6 +1,6 @@
 //! From `linux/uvcvideo.h`.
 
-use linux_ioctl::{Ioctl, _IOWR};
+use uoctl::{Ioctl, _IOWR};
 
 // These are from `linux/usb/video.h`
 ffi_enum! {

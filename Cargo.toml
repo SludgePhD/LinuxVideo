@@ -10,7 +10,7 @@ keywords = ["linux", "video", "webcam"]
 
 [dependencies]
 log = "0.4.14"
-linux-ioctl = "0.2.0"
+uoctl = "1.0.1"
 libc = "0.2.172"
 bitflags = "1.2.1"
 

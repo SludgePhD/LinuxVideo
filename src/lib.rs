@@ -126,7 +126,8 @@ impl Device {
 
     /// Returns the path to the V4L2 device.
     ///
-    /// This will invoke `readlink(2)` on `/proc/self/fd/N` to find the path.
+    /// This will invoke `readlink(2)` on `/proc/self/fd/N` to find the path, so it will not work
+    /// on FreeBSD or other Unix-likes that don't expose a procfs with this functionality.
     pub fn path(&self) -> io::Result<PathBuf> {
         fs::read_link(format!("/proc/self/fd/{}", self.fd()))
     }

@@ -10,7 +10,7 @@ use std::ffi::{c_int, c_void};
 use std::os::raw::c_ulong;
 
 use libc::timeval;
-use linux_ioctl::{Ioctl, _IOR, _IOW, _IOWR};
+use uoctl::{Ioctl, _IOR, _IOW, _IOWR};
 
 use crate::buf_type::BufType;
 use crate::{shared::*, PixelFormat};

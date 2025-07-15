@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.5
+
+- Update from `linux-ioctl` to `uoctl` 1.0.
+
 ## v0.3.4
 
 - Add categories to Cargo.toml.
